@@ -32,6 +32,7 @@
   - 원격 주소에 계정 이름을 넣는다: `https://tpdud2397-cyber@github.com/tpdud2397-cyber/gilteojwo.git` (자격 증명이 계정별로 따로 저장된다).
   - 첫 push 때 브라우저 로그인 창이 뜨면 **tpdud2397-cyber**로 로그인하라고 사용자에게 안내한다.
 - 커밋 메시지는 한국어로 짧게 쓴다.
+- **main 브랜치에 바로 커밋하고 push한다** (사용자 결정, 2026-11-01). 별도 브랜치나 PR을 만들지 않는다.
 - 비밀 정보는 커밋하지 않는다. Supabase service_role 키는 절대 금지. anon 키는 앱에 넣어도 되지만 RLS(테이블 접근 규칙)를 반드시 건다.
 - 심사용 계정은 주최 측 공지 후 Collaborator로 초대한다.
 
