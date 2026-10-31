@@ -3,6 +3,7 @@ package com.gilteojwo.sdktest
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -41,18 +42,23 @@ class TestCard(context: Context, private val title: String) {
 
     init {
         view.orientation = LinearLayout.VERTICAL
-        view.setPadding(28, 20, 28, 20)
-        view.setBackgroundColor(Color.parseColor("#26FFFFFF"))
+        view.setPadding(32, 24, 32, 24)
+        // 둥근 모서리의 어두운 회색 칸
+        val background = GradientDrawable()
+        background.setColor(Color.parseColor("#2A2D33"))
+        background.cornerRadius = 24f
+        view.background = background
 
         val titleText = TextView(context)
         titleText.text = title
-        titleText.textSize = 22f
+        titleText.textSize = 28f
         titleText.setTypeface(null, Typeface.BOLD)
         view.addView(titleText)
 
         resultText.text = "시작 전"
-        resultText.textSize = 17f
-        resultText.setPadding(0, 8, 0, 8)
+        resultText.textSize = 22f
+        resultText.setLineSpacing(6f, 1f)
+        resultText.setPadding(0, 12, 0, 12)
         view.addView(resultText)
     }
 
@@ -69,7 +75,8 @@ class TestCard(context: Context, private val title: String) {
         for ((label, onClick) in buttons) {
             val button = Button(view.context)
             button.text = label
-            button.textSize = 16f
+            button.textSize = 20f
+            button.minHeight = 96
             button.isAllCaps = false
             // 버튼 하나가 오류를 내도 앱 전체가 꺼지지 않게, 오류는 이 칸에 글자로 보여준다
             button.setOnClickListener {

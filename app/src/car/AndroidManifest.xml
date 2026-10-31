@@ -7,8 +7,10 @@
     <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
     <!-- 브레이크 페달 상태 읽기 -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
-    <!-- 방향지시등 읽기, 앰비언트 라이트 읽기·바꾸기 -->
+    <!-- 방향지시등 읽기, 앰비언트 라이트 읽기 -->
     <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <!-- 앰비언트 라이트 바꾸기. SDK 설명서에는 CAR_LIGHTS라고 적혀 있지만 실제 SDK 코드는 이 권한을 요구한다 -->
+    <uses-permission android:name="pleos.car.permission.CONTROL_CAR_LIGHTS" />
     <!-- Pleos 음성 안내(TTS) -->
     <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
 

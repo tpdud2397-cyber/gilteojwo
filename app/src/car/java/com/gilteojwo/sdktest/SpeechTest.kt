@@ -47,10 +47,11 @@ class SpeechTest(private val context: Context, private val card: TestCard) : Sdk
     }
 
     override fun start() {
-        // Pleos TTS: 만들기 → 진행 상황 듣기 → 초기화 → 한국어로 설정
+        // Pleos TTS: 만들기 → 초기화 → 진행 상황 듣기 → (초기화 성공 시) 한국어로 설정
+        // 순서 주의: initialize()를 먼저 불러야 SDK 내부가 준비된다.
+        // 먼저 addEventListener()를 부르면 "lateinit property tts has not been initialized" 오류가 난다 (R3에서 확인).
         val tts = PleosTts(context, Mode.ON_DEVICE)
         pleosTts = tts
-        tts.addEventListener(pleosEvents)
         tts.initialize(object : OnInitializeListener {
             override fun onSuccess() {
                 tts.setLocale(Locale.KOREA)
@@ -59,6 +60,7 @@ class SpeechTest(private val context: Context, private val card: TestCard) : Sdk
 
             override fun onFailure(errorType: ErrorType) = setPleos("초기화 실패 $errorType")
         })
+        tts.addEventListener(pleosEvents)
 
         // 안드로이드 기본 TTS: 만들기 → 준비되면 한국어로 설정
         androidTts = AndroidTts(context) { status ->

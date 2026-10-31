@@ -18,7 +18,8 @@ object PermissionHelper {
     private val permissions = buildList {
         add("pleos.car.permission.FUSED_LOCATION") // 위치 (dangerous)
         add("pleos.car.permission.CAR_DRIVE") // 브레이크
-        add("pleos.car.permission.CAR_LIGHTS") // 방향지시등, 앰비언트
+        add("pleos.car.permission.CAR_LIGHTS") // 방향지시등, 앰비언트 읽기
+        add("pleos.car.permission.CONTROL_CAR_LIGHTS") // 앰비언트 바꾸기
         add("pleos.car.permission.TTS_SERVICE") // Pleos 음성
         add("android.car.permission.CAR_SPEED") // 속도 (dangerous)
         add("android.car.permission.CAR_POWERTRAIN") // 기어

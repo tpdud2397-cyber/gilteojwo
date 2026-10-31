@@ -52,11 +52,11 @@ class SdkTestActivity : Activity() {
         root.setPadding(24, 16, 24, 16)
 
         headerText = TextView(this)
-        headerText.textSize = 18f
+        headerText.textSize = 22f
         root.addView(headerText)
 
         crashText = TextView(this)
-        crashText.textSize = 14f
+        crashText.textSize = 18f
         crashText.setTextColor(Color.parseColor("#FF6E6E"))
         crashText.visibility = View.GONE
         root.addView(crashText)
@@ -173,7 +173,7 @@ class SdkTestActivity : Activity() {
     private fun addCard(column: LinearLayout, title: String): TestCard {
         val card = TestCard(this, title)
         val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-        params.bottomMargin = 16
+        params.bottomMargin = 24
         column.addView(card.view, params)
         return card
     }

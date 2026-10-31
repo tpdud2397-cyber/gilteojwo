@@ -60,7 +60,7 @@
   - Vehicle·FusedLocation은 저장소에 소스(-sources.jar)가 있어서 정확한 함수 이름을 확인할 수 있다.
 - 권한: 개발 중에는 매니페스트에 선언만 하면 쓸 수 있다(설명회에서 확인). 이름은 `pleos.car.permission.{상수 이름}` 형식이다 (SDK 소스의 PleosPermission).
   - `FUSED_LOCATION`: dangerous 등급이라 앱 실행 중에 사용자 허락도 받아야 한다.
-  - `CAR_DRIVE`(브레이크 등), `CAR_LIGHTS`(라이트·방향지시등·앰비언트): normal 등급. 앰비언트 밝기·색·켜기 설정도 `CAR_LIGHTS`로 된다. 다른 라이트 제어는 `CONTROL_CAR_LIGHTS`.
+  - `CAR_DRIVE`(브레이크 등), `CAR_LIGHTS`(라이트·방향지시등·앰비언트): normal 등급. 앰비언트 밝기·색·켜기 **설정은 `CONTROL_CAR_LIGHTS`가 필요하다** (SDK 설명서의 @RequiresPermission은 CAR_LIGHTS라고 적혀 있지만, 실제 구현 LightImpl은 CONTROL_CAR_LIGHTS를 검사한다. R4 에뮬레이터에서 "need Permission"으로 확인).
   - `TTS_SERVICE`: Pleos TTS.
   - 안드로이드 표준: `android.car.permission.CAR_SPEED`(속도, dangerous), `CAR_POWERTRAIN`(기어).
 - Vehicle SDK: 결과는 비동기 콜백(onComplete/onFailed)으로 온다. initialize()와 release()를 쓰고, checkXXXCapabilities로 지원 여부와 범위를 먼저 확인한다.

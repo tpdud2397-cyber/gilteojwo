@@ -150,7 +150,16 @@ class AmbientLightTest(private val vehicle: Vehicle, private val card: TestCard)
         report("원래 값으로 되돌리기 요청함 (켜기·끄기 ${savedSwitch.size}, 밝기 ${savedBrightness.size}, 색 ${savedColor.size}개 구역)")
     }
 
-    private fun areaName(area: SeatArea): String = area.values.joinToString("+") { it.name }
+    /** 좌석 영역 이름을 짧게: ROW_1_LEFT → 1열좌, ROW_2_CENTER → 2열중 */
+    private fun areaName(area: SeatArea): String = area.values.joinToString(",") { seat ->
+        val row = seat.name.removePrefix("ROW_").substringBefore("_")
+        val side = when {
+            seat.name.endsWith("LEFT") -> "좌"
+            seat.name.endsWith("RIGHT") -> "우"
+            else -> "중"
+        }
+        "${row}열$side"
+    }
 
     private fun colorHex(argb: Int): String = "#%06X".format(argb and 0xFFFFFF)
 
