@@ -24,6 +24,7 @@ import com.gilteojwo.R
  * ⑥ 내비 위 알림 시험
  * 버튼을 누르고 10초 안에 내비를 열어 두면, 10초 뒤 알림이 내비 위에 보이는지 확인한다.
  * - 상단 알림: 안드로이드 알림 (중요도 '높음'이면 화면 위쪽에 카드로 잠깐 뜬다)
+ *   차량에서는 알림 종류(category)가 '내비'·'통화'여야 카드로 뜨는 것으로 보여서, 종류 없음 / 내비 종류 두 가지로 보낸다
  * - 화면 덮기: '다른 앱 위에 표시' 권한으로 화면 위쪽에 빨간 띠를 5초 동안 그린다
  */
 class AlertOverNaviTest(private val activity: Activity, private val card: TestCard) : SdkTest {
@@ -36,11 +37,17 @@ class AlertOverNaviTest(private val activity: Activity, private val card: TestCa
     private var overlayView: View? = null
     private var counting = false
     private var status = "대기 중"
+    private var notificationId = 0
 
     init {
         card.addButtons(
-            "${waitSeconds}초 뒤 상단 알림" to { startCountdown("상단 알림") { showNotification() } },
+            "${waitSeconds}초 뒤 상단 알림" to { startCountdown("상단 알림") { showNotification(null) } },
             "${waitSeconds}초 뒤 화면 덮기" to { startCountdown("화면 덮기") { showOverlay() } },
+        )
+        card.addButtons(
+            "${waitSeconds}초 뒤 상단 알림 (내비 종류)" to {
+                startCountdown("상단 알림 (내비 종류)") { showNotification(Notification.CATEGORY_NAVIGATION) }
+            },
         )
         card.addButtons("'다른 앱 위에 표시' 허용하러 가기" to ::openOverlaySettings)
     }
@@ -74,7 +81,8 @@ class AlertOverNaviTest(private val activity: Activity, private val card: TestCa
         tick(waitSeconds)
     }
 
-    private fun showNotification() {
+    /** category: 알림 종류 (예: Notification.CATEGORY_NAVIGATION). null이면 종류 없이 보낸다. */
+    private fun showNotification(category: String?) {
         // 알림을 누르면 시험 화면으로 돌아온다
         val openApp = PendingIntent.getActivity(
             activity, 0, Intent(activity, SdkTestActivity::class.java), PendingIntent.FLAG_IMMUTABLE
@@ -83,11 +91,15 @@ class AlertOverNaviTest(private val activity: Activity, private val card: TestCa
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle("구급차 접근 (시험)")
             .setContentText("오른쪽 뒤 300m · 길터줘 알림 시험")
+            .setCategory(category)
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .build()
-        notificationManager.notify(1, notification)
-        status = "상단 알림을 보냈습니다 (${timeText()}). 내비 위에 보였나요?"
+        // 매번 새 번호로 보낸다. 같은 번호면 '새 알림'이 아니라 '있던 알림 고치기'가 되어 다시 안 뜰 수 있다.
+        notificationId += 1
+        notificationManager.notify(notificationId, notification)
+        val kind = category ?: "종류 없음"
+        status = "상단 알림을 보냈습니다 ($kind, ${timeText()}). 내비 위에 보였나요?"
         refresh()
     }
 
