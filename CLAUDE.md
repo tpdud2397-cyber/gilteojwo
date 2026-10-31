@@ -34,11 +34,12 @@
 - 커밋 메시지는 한국어로 짧게 쓴다.
 - **main 브랜치에 바로 커밋하고 push한다** (사용자 결정, 2026-11-01). 별도 브랜치나 PR을 만들지 않는다.
 - 비밀 정보는 커밋하지 않는다. Supabase service_role 키는 절대 금지. anon 키는 앱에 넣어도 되지만 RLS(테이블 접근 규칙)를 반드시 건다.
+- 예외: 개발용 서명 키 `app/debug.keystore`는 시험판을 덮어 설치하려고 저장소에 넣었다 (사용자 동의, 비밀번호는 공개 기본값 "android"). 제출용 정식판 서명 키는 저장소에 넣지 않고 GitHub Secrets에 둔다.
 - 심사용 계정은 주최 측 공지 후 Collaborator로 초대한다.
 
 ## 작업 위치
 
-- **클라우드 세션**: 코드 작성 → push → GitHub Actions가 APK 빌드 → 사용자가 집 PC 에뮬레이터에 설치해 시험하고 결과(캡처·오류)를 알려준다. 클라우드에서는 에뮬레이터를 돌릴 수 없고, Pleos Maven 저장소가 네트워크 정책상 막힐 수 있으니 빌드 확인은 GitHub Actions 결과로 한다.
+- **클라우드 세션**: 코드 작성 → push → GitHub Actions가 APK 빌드 → 사용자가 집 PC 에뮬레이터에 설치해 시험하고 결과(캡처·오류)를 알려준다. 클라우드에서는 에뮬레이터를 돌릴 수 없고 안드로이드 SDK도 받을 수 없어서(dl.google.com 차단), 빌드 확인은 GitHub Actions 결과로 한다. Pleos 문서와 Maven 저장소(document.pleos.ai, pleos.ai, nexus-playground.pleos.ai)는 클라우드 환경 네트워크 설정에서 허용해 두었다 (2026-10-31).
 - **로컬 세션 (집 PC)**: 빌드·에뮬레이터 설치·로그 확인까지 바로 할 수 있다. 아래 환경 정보를 쓴다.
 
 ## 개발 환경 (집 PC)
@@ -54,15 +55,23 @@
 - Kotlin, minSdk 28, Gradle 8.0 이상.
 - Pleos SDK 문서: https://document.pleos.ai/en/docs/pleos-only/connect-sdk-pleos/
 - Maven 저장소: https://nexus-playground.pleos.ai/repository/maven-releases/
-- 확인된 의존성: `ai.pleos.playground:Vehicle:2.3.2`, `ai.pleos.playground:FusedLocation:1.1.2`. TextToSpeech(3.3.1), NaviHelper(3.0.5), SpeechToText의 정확한 좌표는 문서의 Importing 페이지에서 확인한다.
-- 권한: 개발 중에는 매니페스트에 선언만 하면 쓸 수 있다(설명회에서 확인). `pleos.car.permission.FUSED_LOCATION`, `CAR_DRIVE`(브레이크 등), `CAR_LIGHTS`(라이트·방향지시등), 제어는 `CONTROL_CAR_*` 계열. 정확한 이름은 PleosPermission 문서에서 확인한다.
+- 확인된 의존성 (2026-10-31, Maven 저장소에서 직접 확인): `ai.pleos.playground:Vehicle:2.3.2`, `ai.pleos.playground:FusedLocation:1.1.3`, `ai.pleos.playground:TextToSpeech:3.3.1`, `ai.pleos.playground:NaviHelper:3.0.5`, `ai.pleos.playground:SpeechToText:3.3.1`.
+  - FusedLocation은 문서에 1.1.2로 적혀 있지만 저장소에는 1.0.4와 1.1.3만 있다. 1.1.3을 쓴다.
+  - Vehicle·FusedLocation은 저장소에 소스(-sources.jar)가 있어서 정확한 함수 이름을 확인할 수 있다.
+- 권한: 개발 중에는 매니페스트에 선언만 하면 쓸 수 있다(설명회에서 확인). 이름은 `pleos.car.permission.{상수 이름}` 형식이다 (SDK 소스의 PleosPermission).
+  - `FUSED_LOCATION`: dangerous 등급이라 앱 실행 중에 사용자 허락도 받아야 한다.
+  - `CAR_DRIVE`(브레이크 등), `CAR_LIGHTS`(라이트·방향지시등·앰비언트): normal 등급. 앰비언트 밝기·색·켜기 설정도 `CAR_LIGHTS`로 된다. 다른 라이트 제어는 `CONTROL_CAR_LIGHTS`.
+  - `TTS_SERVICE`: Pleos TTS.
+  - 안드로이드 표준: `android.car.permission.CAR_SPEED`(속도, dangerous), `CAR_POWERTRAIN`(기어).
 - Vehicle SDK: 결과는 비동기 콜백(onComplete/onFailed)으로 온다. initialize()와 release()를 쓰고, checkXXXCapabilities로 지원 여부와 범위를 먼저 확인한다.
-- Light 도메인: setAmbientLightBrightness, setAmbientLightBrightnessColor, setAmbientLightSwitch.
+- Light 도메인: setAmbientLightBrightness, setAmbientLightBrightnessColor(색은 32비트 ARGB 숫자), setAmbientLightSwitch. 구역은 SeatArea(좌석 영역) 단위이고 checkAmbientLight...Capabilities로 지원 구역을 받는다.
+- 속도·기어는 안드로이드 표준 차량 속성으로 읽는다: 속도 `PERF_VEHICLE_SPEED`(Pleos FAQ: 계기판과 같은 값), 기어 `GEAR_SELECTION`(Pleos의 Gear API는 폐지 예정). 브레이크 페달·방향지시등은 Vehicle SDK(Brake, TurnSignal).
+- 주행 제한 강제 켜기/끄기 (집 PC에서 Claude Code가 실행): `adb shell cmd hmg_car_service --service drivingstate driving_regulation on` / `off`.
 - FusedLocation: LocationData에 위도·경도·고도·진행 방향·신뢰도·시각이 있고 속도는 없다. isSupported()를 먼저 부른다. 안드로이드 표준 위치 권한의 동작은 보장하지 않는다고 문서에 적혀 있다.
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
 - 서버: Supabase (아직 프로젝트를 만들지 않음). 테이블은 vehicles, dispatches, positions_live, yield_acks이고, 실시간 구독을 쓴다. 자세한 건 사양서 참고.
 - 앱 구조: 한 프로젝트에서 APK 2개를 만든다 (product flavor). 폰용은 송신, 차량용은 수신 + Pleos 송신 모드다. 폰용에는 Pleos SDK와 차량 전용 라이브러리를 넣지 않는다.
-- APK 배포: GitHub Actions로 빌드해 Releases에 올린다. 노트북과 폰은 Releases에서 받아 설치한다.
+- APK 배포: main에 push하면 GitHub Actions(`.github/workflows/build.yml`)가 빌드해 Releases의 "개발 최신판"(태그 `dev`)을 새 파일로 바꾼다. 파일은 `gilteojwo-car.apk`(차량용), `gilteojwo-phone.apk`(폰용). 앱 화면에 빌드 번호가 보인다. 노트북과 폰은 Releases에서 받아 설치한다.
 
 ## 지금까지 확인된 사실 (2026-10-31 기준)
 
@@ -82,6 +91,7 @@
    - 알림음을 좌우(스테레오)로 나눠 재생
    - 내비가 떠 있을 때 우리 알림이 위에 보이는지
    - Virtual Console에서 바꾼 브레이크·방향지시등·기어·속도를 Vehicle SDK로 읽을 수 있는지
+   - 진행 상황 (2026-10-31): 시험 앱 완성, GitHub Actions 빌드 성공. 코드는 `app/src/car/java/com/gilteojwo/sdktest/`, 확인 순서는 `docs/시험결과.md`. 사용자의 에뮬레이터 시험 결과를 기다리는 중.
 2. 결과를 `docs/시험결과.md`에 적고 사용자에게 요약한다.
 3. 그다음 본 개발을 한다. 수신은 R-1~R-4 → R-6·R-7·R-12 → R-10·R-15·R-16 → R-11·R-13·R-14·R-17 순서, 송신은 S-1~S-8.
 

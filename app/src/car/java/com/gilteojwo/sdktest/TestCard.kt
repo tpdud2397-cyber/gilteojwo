@@ -71,7 +71,14 @@ class TestCard(context: Context, private val title: String) {
             button.text = label
             button.textSize = 16f
             button.isAllCaps = false
-            button.setOnClickListener { onClick() }
+            // 버튼 하나가 오류를 내도 앱 전체가 꺼지지 않게, 오류는 이 칸에 글자로 보여준다
+            button.setOnClickListener {
+                try {
+                    onClick()
+                } catch (e: Exception) {
+                    show("[$label] 오류: ${e.javaClass.simpleName} ${e.message}")
+                }
+            }
             row.addView(button)
         }
         view.addView(row)

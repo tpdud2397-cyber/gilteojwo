@@ -23,6 +23,7 @@ class SdkTestActivity : Activity() {
     private lateinit var alertOverNaviTest: AlertOverNaviTest
     private lateinit var headerText: TextView
     private var started = false
+    private val startErrors = mutableListOf<String>() // 시작하다 오류가 난 항목
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,8 +78,15 @@ class SdkTestActivity : Activity() {
     private fun startTests() {
         if (started) return
         started = true
+        // 한 항목이 시작하다 오류를 내도 나머지 항목은 계속 시험한다. 오류는 맨 위 줄에 보여준다
+        for (test in tests) {
+            try {
+                test.start()
+            } catch (e: Exception) {
+                startErrors += "${test.javaClass.simpleName}: ${e.javaClass.simpleName} ${e.message}"
+            }
+        }
         updateHeader()
-        tests.forEach { it.start() }
     }
 
     override fun onResume() {
@@ -102,7 +110,9 @@ class SdkTestActivity : Activity() {
     }
 
     private fun updateHeader() {
-        headerText.text = "길터줘 Pleos 시험 화면 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)}"
+        var text = "길터줘 Pleos 시험 화면 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)}"
+        if (startErrors.isNotEmpty()) text += "\n시작 오류: " + startErrors.joinToString(" / ")
+        headerText.text = text
     }
 
     /** 세로로 스크롤되는 칸 하나를 만들어 columns에 반씩 나눠 넣는다 */
