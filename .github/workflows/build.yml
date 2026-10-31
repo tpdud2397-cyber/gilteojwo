@@ -1,4 +1,5 @@
 # main에 올릴 때마다 폰용·차량용 APK를 만들어 Releases의 "개발 최신판"에 올린다.
+# 파일 이름 뒤에 _R번호를 붙인다 (번호 = GitHub 빌드 번호, 앱 화면 맨 위의 R번호와 같다).
 name: APK 빌드
 
 on:
@@ -33,11 +34,11 @@ jobs:
       - name: 폰용·차량용 APK 만들기
         run: ./gradlew assemblePhoneDebug assembleCarDebug --stacktrace
 
-      - name: 파일 이름 정리
+      - name: 파일 이름 정리 (뒤에 _R번호)
         run: |
           mkdir -p out
-          cp app/build/outputs/apk/car/debug/app-car-debug.apk out/gilteojwo-car.apk
-          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk out/gilteojwo-phone.apk
+          cp app/build/outputs/apk/car/debug/app-car-debug.apk out/gilteojwo-car_R$GITHUB_RUN_NUMBER.apk
+          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk out/gilteojwo-phone_R$GITHUB_RUN_NUMBER.apk
           ls -l out
 
       - name: Releases의 "개발 최신판" 교체
@@ -48,8 +49,9 @@ jobs:
           gh release create dev out/*.apk \
             --prerelease \
             --target "$GITHUB_SHA" \
-            --title "개발 최신판 (빌드 #$GITHUB_RUN_NUMBER)" \
+            --title "개발 최신판 R$GITHUB_RUN_NUMBER" \
             --notes "main에 올라온 최신 코드로 자동 빌드한 시험판입니다.
-          - 차량용(에뮬레이터): gilteojwo-car.apk
-          - 폰용: gilteojwo-phone.apk
+          - 차량용(에뮬레이터): gilteojwo-car_R$GITHUB_RUN_NUMBER.apk
+          - 폰용: gilteojwo-phone_R$GITHUB_RUN_NUMBER.apk
+          - 앱 화면 맨 위에 R$GITHUB_RUN_NUMBER 이 보이면 이 파일이 깔린 것입니다.
           - 커밋: $GITHUB_SHA"

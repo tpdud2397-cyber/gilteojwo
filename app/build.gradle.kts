@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// GitHub Actions에서 빌드하면 빌드 번호와 커밋 번호가 들어간다. 집 PC에서 빌드하면 1, "local".
+// GitHub Actions에서 빌드하면 빌드 번호(R번호)와 커밋 번호가 들어간다. 집 PC에서 빌드하면 1, "local".
 val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
 val commitId = System.getenv("GITHUB_SHA")?.take(7) ?: "local"
 
@@ -19,7 +19,7 @@ android {
         minSdk = 28
         targetSdk = 34
         versionCode = buildNumber
-        versionName = "0.1.$buildNumber"
+        versionName = "R$buildNumber"
         buildConfigField("int", "BUILD_NUMBER", "$buildNumber")
         buildConfigField("String", "COMMIT_ID", "\"$commitId\"")
     }

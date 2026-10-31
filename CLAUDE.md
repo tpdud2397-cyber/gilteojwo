@@ -71,7 +71,7 @@
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
 - 서버: Supabase (아직 프로젝트를 만들지 않음). 테이블은 vehicles, dispatches, positions_live, yield_acks이고, 실시간 구독을 쓴다. 자세한 건 사양서 참고.
 - 앱 구조: 한 프로젝트에서 APK 2개를 만든다 (product flavor). 폰용은 송신, 차량용은 수신 + Pleos 송신 모드다. 폰용에는 Pleos SDK와 차량 전용 라이브러리를 넣지 않는다.
-- APK 배포: main에 push하면 GitHub Actions(`.github/workflows/build.yml`)가 빌드해 Releases의 "개발 최신판"(태그 `dev`)을 새 파일로 바꾼다. 파일은 `gilteojwo-car.apk`(차량용), `gilteojwo-phone.apk`(폰용). 앱 화면에 빌드 번호가 보인다. 노트북과 폰은 Releases에서 받아 설치한다.
+- APK 배포: main에 push하면 GitHub Actions(`.github/workflows/build.yml`)가 빌드해 Releases의 "개발 최신판"(태그 `dev`)을 새 파일로 바꾼다. 파일 이름 뒤에 _R번호를 붙인다: `gilteojwo-car_R5.apk`(차량용), `gilteojwo-phone_R5.apk`(폰용). R번호는 GitHub 빌드 번호이고 새 빌드마다 하나씩 올라간다 (사용자 요청, R5부터). 앱 화면 맨 위와 Releases 제목에도 같은 R번호가 보인다. 노트북과 폰은 Releases에서 받아 설치한다.
 
 ## 지금까지 확인된 사실 (2026-10-31 기준)
 
