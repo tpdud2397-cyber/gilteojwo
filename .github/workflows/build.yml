@@ -1,0 +1,55 @@
+# main에 올릴 때마다 폰용·차량용 APK를 만들어 Releases의 "개발 최신판"에 올린다.
+name: APK 빌드
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 짧은 시간에 여러 번 올리면 마지막 것만 빌드한다
+concurrency:
+  group: apk-build
+  cancel-in-progress: true
+
+permissions:
+  contents: write # Releases에 파일을 올리려면 필요
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 받기
+        uses: actions/checkout@v4
+
+      - name: Java 17 준비
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle 준비
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 폰용·차량용 APK 만들기
+        run: ./gradlew assemblePhoneDebug assembleCarDebug --stacktrace
+
+      - name: 파일 이름 정리
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/car/debug/app-car-debug.apk out/gilteojwo-car.apk
+          cp app/build/outputs/apk/phone/debug/app-phone-debug.apk out/gilteojwo-phone.apk
+          ls -l out
+
+      - name: Releases의 "개발 최신판" 교체
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete dev --yes --cleanup-tag || true
+          gh release create dev out/*.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "개발 최신판 (빌드 #$GITHUB_RUN_NUMBER)" \
+            --notes "main에 올라온 최신 코드로 자동 빌드한 시험판입니다.
+          - 차량용(에뮬레이터): gilteojwo-car.apk
+          - 폰용: gilteojwo-phone.apk
+          - 커밋: $GITHUB_SHA"

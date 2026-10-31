@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 차량용(Pleos) 설정: 권한 선언과 시험 화면 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Pleos SDK 권한 (개발 중에는 선언만 하면 쓸 수 있다) -->
+    <!-- 내 차 위치. 'dangerous' 등급이라 앱 실행 중에 허락을 받아야 한다 -->
+    <uses-permission android:name="pleos.car.permission.FUSED_LOCATION" />
+    <!-- 브레이크 페달 상태 읽기 -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- 방향지시등 읽기, 앰비언트 라이트 읽기·바꾸기 -->
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <!-- Pleos 음성 안내(TTS) -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+
+    <!-- 안드로이드 차량 표준 권한 -->
+    <!-- 차량 속도 (계기판과 같은 값). 'dangerous' 등급 -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <!-- 기어 -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+
+    <!-- 안드로이드 기본 권한 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 다른 앱(내비) 위에 화면을 덮어 그리기 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application>
+        <!-- 안드로이드 차량 표준 기능 라이브러리 -->
+        <uses-library
+            android:name="android.car"
+            android:required="false" />
+
+        <activity
+            android:name=".sdktest.SdkTestActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- "이 화면은 주행 중에 봐도 되게 만들었다"는 선언. 실제로 인정되는지 시험한다 -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+    </application>
+
+</manifest>
