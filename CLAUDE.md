@@ -72,7 +72,7 @@
 - 주행 제한 강제 켜기/끄기 (집 PC에서 Claude Code가 실행): `adb shell cmd hmg_car_service --service drivingstate driving_regulation on` / `off`.
 - FusedLocation: LocationData에 위도·경도·고도·진행 방향·신뢰도·시각이 있고 속도는 없다. isSupported()를 먼저 부른다. 안드로이드 표준 위치 권한의 동작은 보장하지 않는다고 문서에 적혀 있다.
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
-- 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch. 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다(발표 전 확인).
+- 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch·check_vehicle(등록 확인)·dispatch_status(알림·양보 수, 11/01 추가). 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다(발표 전 확인).
   - 시험용 구급차 `TEST-AMB-1`이 등록돼 있다. 등록 코드는 저장소에 적지 않는다 (집 PC의 Claude 기억에 있음). 가짜 구급차: `python tools/fake_ambulance.py 등록코드`, 앱 계산 기록: `adb logcat -s Gilteojwo`.
   - 사용자는 바탕화면 '가짜 구급차' 아이콘으로 직접 실행한다 (`tools/가짜구급차.bat`이 `tools/등록코드.txt`를 읽음. 이 코드 파일은 GitHub 제외라 저장소를 새로 받으면 다시 만든다).
 - 앱 구조: 한 프로젝트에서 APK 2개를 만든다 (product flavor). 폰용은 송신, 차량용은 수신 + Pleos 송신 모드다. 폰용에는 Pleos SDK와 차량 전용 라이브러리를 넣지 않는다.
@@ -110,7 +110,8 @@
    - 가장자리 빛 (11/01 사용자 요청): 반타원 그라데이션, 멀면 내비 칸의 5%로 얇고 연하게 → 가까우면 20%까지 크고 진하게. 상하좌우 모두 차 위치에 따라.
    - 4묶음 완료 (2026-11-01): 앰비언트 조명(`alert/AmbientLight`, 관심 주황·경고 빨강·양보 빨강 깜빡임·해제 시 처음 값으로), 음악 소리 줄이기(`alert/MusicDucker`, 경고·양보 동안), 길터줘 화면(대기 / 레이더 접근 알림 / 큰 그림 양보 안내 / 해제). 계산 시험 80개. 조명은 Virtual Console Ambient 칸으로 확인함.
    - 수신 기능 마무리 (2026-11-01): R-14 끊김 추정(`receive/DeadReckoning`, 5초 넘게 끊기면 해제 + "긴급차량 정보가 끊겼습니다. 사이렌에 주의하세요"), R-16 양보 감지·전송(`alert/YieldDetector`, `receive/YieldAckSender` → yield_acks), R-17 양보 리포트(`report/`, 차 안에만 저장). 위치가 5초 넘게 안 오면 다시 연결(`MyLocationTracker`). 계산 시험 95개. 이것으로 수신 R-1~R-17 전부 구현.
-   - 다음: 송신 S-1~S-8 (폰 앱, Pleos 송신 모드). S-8 '알림 N대 · 양보 N대'는 yield_acks를 읽어야 하는데 공개 키로는 못 읽으므로, 등록 코드를 확인하고 개수만 돌려주는 서버 기능(SQL)이 필요하다.
+   - 송신 1묶음 완료 (2026-11-01): 폰 앱 등록(S-1)·긴급출동 버튼(S-2)·1초 위치 송신(S-3)·백그라운드 송신(S-5)·송신 상태 경고(S-6). 서버 부르기는 공용 `send/`, 폰 화면·서비스는 `app/src/phone/.../sender/`. 폰 앱을 같은 에뮬레이터에 깔아 확인함(설치 후 `pm grant --user 10 com.gilteojwo.phone android.permission.ACCESS_FINE_LOCATION`). 계산 시험 101개.
+   - 다음: 송신 2묶음(S-4 시연용 경로 재생, S-7 60분 출동 확인, S-8 '알림 N대 · 양보 N대' — 서버 기능 dispatch_status는 이미 있음), 송신 3묶음(차량 앱 Pleos 송신 모드·설정 화면).
    - 시험으로 송신을 강제로 끊으면(timeout) end_dispatch가 안 불려 출동이 열린 채 남는다. 시험 뒤 그 출동 번호로 end_dispatch를 불러 정리한다.
 
 ## 코드 원칙

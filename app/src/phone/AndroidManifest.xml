@@ -1,16 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 폰용(송신) 설정. 지금은 자리만 만들어 둔 상태. -->
+<!-- 폰용(송신) 설정: 권한 선언, 송신 화면, 송신 서비스 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 폰 GPS 위치 (긴급출동 중에만 보낸다) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- 화면이 꺼져도 송신 (알림창에 '긴급출동 송신 중' 표시) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
         <activity
             android:name=".sender.SenderActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- 차량(에뮬레이터)에 깔았을 때 기어 D에서도 막히지 않게 하는 표시. 폰에서는 영향 없음.
+                 이 표시가 없으면 기어 D에서 "주행 중에는 사용할 수 없습니다"로 가려진다 (11/01 확인) -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
         </activity>
+
+        <!-- 긴급출동 송신: 1초마다 위치를 서버로 보낸다 (S-3·S-5) -->
+        <service
+            android:name=".sender.SendService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>
