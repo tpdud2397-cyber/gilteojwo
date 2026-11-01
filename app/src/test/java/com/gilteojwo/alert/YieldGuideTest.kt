@@ -109,6 +109,15 @@ class YieldGuideTest {
     }
 
     @Test
+    fun `긴급차량 정보가 끊겨 해제되면 지나갔다고 하지 않고 사이렌에 주의하라고 한다`() {
+        val lost = alert(AlertStage.CLEARED, RelativeDirection.REAR).copy(signalLost = true)
+        val advice = YieldGuide.choose(lost, 0.0, stoppedWithBrake)
+
+        assertEquals("긴급차량 정보가 끊겼습니다. 사이렌에 주의하세요", advice?.text)
+        assertEquals(YieldAction.SIGNAL_LOST, advice?.action)
+    }
+
+    @Test
     fun `관심·경고 단계에는 양보 문구가 없다`() {
         assertNull(YieldGuide.choose(alert(AlertStage.ATTENTION, RelativeDirection.REAR), 0.0, driving))
         assertNull(YieldGuide.choose(alert(AlertStage.WARNING, RelativeDirection.REAR), 0.0, driving))

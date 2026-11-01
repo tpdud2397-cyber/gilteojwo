@@ -109,7 +109,9 @@
    - 3묶음 완료 (2026-11-01): 수신 서비스(`service/ReceiveService`, 포그라운드 서비스, 부팅·새 판 설치 때 자동 시작), 내비 위 상단 카드(`alert/OverNaviNotifier`)와 내비 칸 가장자리 빛(`alert/EdgeGlowOverlay`), 알림음(`alert/SoundPlayer`)·음성(`alert/VoiceGuide`). 대기 화면은 서비스 결과를 보여주기만 한다. 계산 시험 70개. 내비를 앞에 띄운 채 가짜 구급차로 확인함. 새로 설치하면 '다른 앱 위에 표시'가 꺼질 수 있어 `adb shell appops set --user 10 com.gilteojwo.car SYSTEM_ALERT_WINDOW allow`로 다시 켠다. 앱을 강제 종료하면 자동 시작이 막히니 한 번 연다. 부팅 자동 시작은 아직 미확인.
    - 가장자리 빛 (11/01 사용자 요청): 반타원 그라데이션, 멀면 내비 칸의 5%로 얇고 연하게 → 가까우면 20%까지 크고 진하게. 상하좌우 모두 차 위치에 따라.
    - 4묶음 완료 (2026-11-01): 앰비언트 조명(`alert/AmbientLight`, 관심 주황·경고 빨강·양보 빨강 깜빡임·해제 시 처음 값으로), 음악 소리 줄이기(`alert/MusicDucker`, 경고·양보 동안), 길터줘 화면(대기 / 레이더 접근 알림 / 큰 그림 양보 안내 / 해제). 계산 시험 80개. 조명은 Virtual Console Ambient 칸으로 확인함.
-   - 남은 수신 기능: R-14(끊기면 5초 추정), R-16(양보 감지·확인 전송), R-17(양보 리포트). 그다음 송신 S-1~S-8.
+   - 수신 기능 마무리 (2026-11-01): R-14 끊김 추정(`receive/DeadReckoning`, 5초 넘게 끊기면 해제 + "긴급차량 정보가 끊겼습니다. 사이렌에 주의하세요"), R-16 양보 감지·전송(`alert/YieldDetector`, `receive/YieldAckSender` → yield_acks), R-17 양보 리포트(`report/`, 차 안에만 저장). 위치가 5초 넘게 안 오면 다시 연결(`MyLocationTracker`). 계산 시험 95개. 이것으로 수신 R-1~R-17 전부 구현.
+   - 다음: 송신 S-1~S-8 (폰 앱, Pleos 송신 모드). S-8 '알림 N대 · 양보 N대'는 yield_acks를 읽어야 하는데 공개 키로는 못 읽으므로, 등록 코드를 확인하고 개수만 돌려주는 서버 기능(SQL)이 필요하다.
+   - 시험으로 송신을 강제로 끊으면(timeout) end_dispatch가 안 불려 출동이 열린 채 남는다. 시험 뒤 그 출동 번호로 end_dispatch를 불러 정리한다.
 
 ## 코드 원칙
 

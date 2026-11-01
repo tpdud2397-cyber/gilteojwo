@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.util.Log
 import com.gilteojwo.R
 import com.gilteojwo.alert.AlertAnnouncer
+import com.gilteojwo.alert.AlertStage
 import com.gilteojwo.alert.AlertStageJudge
 import com.gilteojwo.alert.AmbientCue
 import com.gilteojwo.alert.AmbientLight
@@ -22,13 +23,18 @@ import com.gilteojwo.alert.MusicDucker
 import com.gilteojwo.alert.OverNaviNotifier
 import com.gilteojwo.alert.SoundPlayer
 import com.gilteojwo.alert.VoiceGuide
+import com.gilteojwo.alert.YieldDetector
+import com.gilteojwo.alert.YieldStatus
 import com.gilteojwo.alert.YieldGuide
 import com.gilteojwo.approach.ApproachInfo
 import com.gilteojwo.approach.ApproachTracker
 import com.gilteojwo.mylocation.MyLocationTracker
 import com.gilteojwo.mylocation.MyPosition
+import com.gilteojwo.receive.DeadReckoning
 import com.gilteojwo.receive.EmergencyVehicle
 import com.gilteojwo.receive.EmergencyVehicleReceiver
+import com.gilteojwo.receive.YieldAckSender
+import com.gilteojwo.report.YieldReportStore
 import com.gilteojwo.screen.WaitingActivity
 import com.gilteojwo.vehiclestate.VehicleState
 import com.gilteojwo.vehiclestate.VehicleStateReader
@@ -39,7 +45,8 @@ import kotlin.math.roundToInt
  * 1) 내 위치(R-1), 긴급차량(R-2), 내 차 상태(R-5~R-8)를 받는다
  * 2) 내 위치가 올 때마다(약 1초) 거리·방향·접근(R-3·R-4) → 알림 단계 → 양보 문구를 계산한다
  * 3) 내비 위 상단 카드와 가장자리 빛(R-10·R-11), 알림음과 음성(R-12), 음악 소리 줄이기(R-13), 앰비언트 조명(R-15)으로 알린다
- * 4) 화면(WaitingActivity)이 열려 있으면 같은 결과를 넘겨 준다
+ * 4) 알림 중 양보를 자동으로 감지해 서버에 익명으로 알리고(R-16), 길을 열어준 횟수를 차 안에 남긴다(R-17)
+ * 5) 화면(WaitingActivity)이 열려 있으면 같은 결과를 넘겨 준다
  * 안드로이드는 화면 없이 도는 앱을 멈출 수 있어서, 알림창에 '길터줘 수신 중'을 띄워 두는 서비스(포그라운드 서비스)로 만든다.
  */
 class ReceiveService : Service() {
@@ -49,6 +56,9 @@ class ReceiveService : Service() {
     private val approachTracker = ApproachTracker()
     private val alertJudge = AlertStageJudge()
     private val announcer = AlertAnnouncer()
+    private val yieldDetector = YieldDetector()
+    private val yieldAckSender = YieldAckSender()
+    private lateinit var reportStore: YieldReportStore
 
     private lateinit var notifier: OverNaviNotifier
     private lateinit var edgeGlow: EdgeGlowOverlay
@@ -71,6 +81,8 @@ class ReceiveService : Service() {
         voiceGuide = VoiceGuide(this)
         musicDucker = MusicDucker(this)
         ambientLight = AmbientLight(this)
+        reportStore = YieldReportStore(this)
+        snapshot = snapshot.copy(tally = reportStore.load())
         locationTracker = MyLocationTracker(this) { position -> onMyPositionChanged(position) }
         vehicleReceiver = EmergencyVehicleReceiver { list, status -> onVehiclesChanged(list, status) }
         vehicleStateReader = VehicleStateReader(this) { state -> onVehicleStateChanged(state) }
@@ -113,12 +125,33 @@ class ReceiveService : Service() {
 
     /** 내 위치가 새로 올 때마다(약 1초) 계산하고 알린다 */
     private fun onMyPositionChanged(position: MyPosition) {
-        val results = approachTracker.update(position, vehicles)
+        // R-14 송신이 잠깐 끊긴 차는 마지막 위치·속도로 추정하고, 5초 넘게 끊긴 차는 뺀다
+        val current = vehicles.mapNotNull { DeadReckoning.estimate(it, position.timeMillis) }
+        val results = approachTracker.update(position, current)
         val alert = alertJudge.update(results, position.timeMillis)
         val advice = YieldGuide.choose(alert, position.headingDegrees, snapshot.vehicleState)
 
+        // R-16·R-17 양보 감지: 서버에 익명으로 알리고, 양보했으면 차 안에 횟수를 남긴다
+        var tally = snapshot.tally
+        var yieldedVehicleId = snapshot.yieldedVehicleId
+        yieldDetector.update(alert, snapshot.vehicleState)?.let { status ->
+            val target = alert.target
+            target?.vehicle?.dispatchId?.let { yieldAckSender.send(it, status, position.point) }
+            if (status == YieldStatus.YIELDED && target != null) {
+                tally = reportStore.addYield()
+                yieldedVehicleId = target.vehicle.id
+            }
+        }
+        // 해제 때 양보했던 차였으면 "오늘 구급차 1대에 길을 열어줬습니다"를 카드에 덧붙인다
+        val target = alert.target
+        val reportLine = if (alert.stage == AlertStage.CLEARED && target != null && target.vehicle.id == yieldedVehicleId) {
+            tally.message(YieldReportStore.today(), target.vehicle.type.koreanName)
+        } else {
+            null
+        }
+
         // 알리기: 내비 위 카드, 가장자리 빛, 앰비언트 조명, 음악 줄이기, 소리·음성
-        notifier.update(alert, advice)
+        notifier.update(alert, advice, reportLine)
         edgeGlow.show(EdgeGlow.of(alert))
         ambientLight.show(AmbientCue.of(alert.stage))
         musicDucker.lower(AlertAnnouncer.lowersMusic(alert.stage))
@@ -134,6 +167,9 @@ class ReceiveService : Service() {
                 results = results,
                 alert = alert,
                 advice = advice,
+                tally = tally,
+                yieldedVehicleId = yieldedVehicleId,
+                reportLine = reportLine,
             ),
         )
         // 집 PC에서 `adb logcat -s Gilteojwo`로 계산 결과를 시간순으로 볼 수 있다
@@ -207,8 +243,9 @@ class ReceiveService : Service() {
     private fun describe(info: ApproachInfo): String {
         val arrival = info.arrivalText ?: "도착 시간 없음"
         val state = if (info.isApproaching) "접근 중" else "접근 아님"
+        val estimated = if (info.vehicle.isEstimated) " · 추정" else ""
         return "${info.vehicle.type.koreanName} · ${info.direction.koreanName}(${info.direction.clock}) · " +
-            "${info.distanceMeters.roundToInt()}m · $arrival · $state"
+            "${info.distanceMeters.roundToInt()}m · $arrival · $state$estimated"
     }
 
     companion object {

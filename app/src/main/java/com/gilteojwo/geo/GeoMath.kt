@@ -31,6 +31,17 @@ object GeoMath {
         return normalize(Math.toDegrees(atan2(y, x)))
     }
 
+    /** from에서 bearingDegrees 방향으로 meters만큼 간 점 (끊긴 긴급차량 위치 추정에 쓴다) */
+    fun destination(from: GeoPoint, bearingDegrees: Double, meters: Double): GeoPoint {
+        val angle = meters / EARTH_RADIUS_METERS // 지구 중심에서 본 이동 각도
+        val bearing = Math.toRadians(bearingDegrees)
+        val lat1 = Math.toRadians(from.latitude)
+        val lon1 = Math.toRadians(from.longitude)
+        val lat2 = asin(sin(lat1) * cos(angle) + cos(lat1) * sin(angle) * cos(bearing))
+        val lon2 = lon1 + atan2(sin(bearing) * sin(angle) * cos(lat1), cos(angle) - sin(lat1) * sin(lat2))
+        return GeoPoint(Math.toDegrees(lat2), Math.toDegrees(lon2))
+    }
+
     /** 두 방향이 몇 도 차이 나는지 (0~180°). 예: 350°와 10°는 20° */
     fun angleDifference(a: Double, b: Double): Double {
         val diff = normalize(a - b)

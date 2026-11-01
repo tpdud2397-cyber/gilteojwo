@@ -6,7 +6,9 @@ import com.gilteojwo.approach.RelativeDirection
 import com.gilteojwo.receive.EmergencyVehicle
 import com.gilteojwo.receive.VehicleType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** 사양서 '알림 단계와 양보 안내': 관심 1,000m / 경고 500m·30초 / 양보 200m·15초 / 해제 */
@@ -96,6 +98,17 @@ class AlertStageJudgeTest {
         val state = judge.update(emptyList(), 1000)
 
         assertEquals(AlertStage.CLEARED, state.stage)
+        assertTrue(state.signalLost) // 지나간 것이 아니라 정보가 끊긴 것
+    }
+
+    @Test
+    fun `멀어져서 해제되면 신호가 끊긴 것이 아니다`() {
+        judge.update(listOf(info(50.0, 3, true)), 0)
+        judge.update(listOf(info(20.0, null, false)), 1000)
+        val state = judge.update(listOf(info(60.0, null, false)), 4000)
+
+        assertEquals(AlertStage.CLEARED, state.stage)
+        assertFalse(state.signalLost)
     }
 
     @Test

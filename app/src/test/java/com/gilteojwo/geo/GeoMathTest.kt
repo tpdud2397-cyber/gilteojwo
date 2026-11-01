@@ -46,4 +46,12 @@ class GeoMathTest {
     fun `90도와 270도는 180도 차이`() {
         assertEquals(180.0, GeoMath.angleDifference(90.0, 270.0), 0.001)
     }
+
+    @Test
+    fun `한 점에서 동쪽으로 500m 간 점은 거리 500m, 방위 90도`() {
+        val moved = GeoMath.destination(CITY_HALL, 90.0, 500.0)
+
+        assertEquals(500.0, GeoMath.distanceMeters(CITY_HALL, moved), 0.5)
+        assertEquals(90.0, GeoMath.bearingDegrees(CITY_HALL, moved), 0.5)
+    }
 }

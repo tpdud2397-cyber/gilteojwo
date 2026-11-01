@@ -13,6 +13,7 @@ enum class YieldAction {
     STOP_BEFORE_CROSSING, // 녹색 신호여도 교차로에 진입하지 마세요
     CONFIRMED, // 확인했습니다 (양보 행동을 함)
     PASSED, // 지나갔습니다
+    SIGNAL_LOST, // 긴급차량 정보가 끊김 (지나갔는지 모름)
 }
 
 /** 양보 안내 한 줄과 그 종류. isConfirmed = 운전자가 양보 행동(우측 방향지시등)을 해서 반복 안내를 멈출 때 */
@@ -42,8 +43,12 @@ object YieldGuide {
         return when (alert.stage) {
             // 막 지나가서 해제를 기다리는 3초 동안은 새 안내를 하지 않는다 (지나간 차에 비키라고 하지 않게)
             AlertStage.YIELD -> if (target.isApproaching) duringYield(target, myHeadingDegrees, car) else null
-            AlertStage.CLEARED ->
+            // 정보가 끊겨 해제됐으면 지나갔는지 모르므로 "지나갔습니다"라고 하지 않는다 (R-14)
+            AlertStage.CLEARED -> if (alert.signalLost) {
+                YieldAdvice("긴급차량 정보가 끊겼습니다. 사이렌에 주의하세요", YieldAction.SIGNAL_LOST)
+            } else {
                 YieldAdvice(if (isStopped(car)) "지나갔습니다. 출발하셔도 됩니다" else "지나갔습니다", YieldAction.PASSED)
+            }
             else -> null
         }
     }

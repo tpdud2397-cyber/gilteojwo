@@ -11,5 +11,8 @@ enum class AlertStage(val koreanName: String) {
     CLEARED("해제"),
 }
 
-/** 지금 알림 단계와 알리고 있는 긴급차량. 알림 없음이면 target은 null */
-data class AlertState(val stage: AlertStage, val target: ApproachInfo?)
+/**
+ * 지금 알림 단계와 알리고 있는 긴급차량. 알림 없음이면 target은 null.
+ * signalLost: 해제된 까닭이 '지나감'이 아니라 '정보가 끊김(목록에서 사라짐)'일 때 true
+ */
+data class AlertState(val stage: AlertStage, val target: ApproachInfo?, val signalLost: Boolean = false)

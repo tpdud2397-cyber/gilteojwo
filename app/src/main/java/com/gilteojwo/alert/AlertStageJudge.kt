@@ -17,6 +17,7 @@ class AlertStageJudge {
     private var lastTarget: ApproachInfo? = null // 그 차의 마지막 계산 결과 (해제 화면에도 쓴다)
     private var notApproachingSinceMillis: Long? = null // '접근 아님'이 시작된 시각
     private var clearedAtMillis = 0L
+    private var signalLost = false // 정보가 끊겨서 해제됐는지
 
     /** 계산 결과가 새로 나올 때마다(약 1초) 부른다 */
     fun update(results: List<ApproachInfo>, nowMillis: Long): AlertState {
@@ -24,13 +25,13 @@ class AlertStageJudge {
         if (isAlerting()) {
             val target = results.find { it.vehicle.id == targetId }
             when {
-                // 목록에서 사라짐 (긴급출동 종료, 송신 끊김)
-                target == null -> clear(nowMillis)
+                // 목록에서 사라짐 (송신이 5초 넘게 끊김, 긴급출동 종료): 지나간 것인지 알 수 없다
+                target == null -> clear(nowMillis, lost = true)
                 // 멀어지는 중: 3초 넘게 이어지면 해제
                 !target.isApproaching -> {
                     lastTarget = target
                     val since = notApproachingSinceMillis ?: nowMillis.also { notApproachingSinceMillis = it }
-                    if (nowMillis - since >= CLEAR_AFTER_MILLIS) clear(nowMillis)
+                    if (nowMillis - since >= CLEAR_AFTER_MILLIS) clear(nowMillis, lost = false)
                 }
                 // 계속 다가오는 중: 단계는 올라가기만 한다
                 else -> {
@@ -55,7 +56,7 @@ class AlertStageJudge {
             stage = AlertStage.NONE
             lastTarget = null
         }
-        return AlertState(stage, if (stage == AlertStage.NONE) null else lastTarget)
+        return AlertState(stage, if (stage == AlertStage.NONE) null else lastTarget, stage == AlertStage.CLEARED && signalLost)
     }
 
     private fun isAlerting() = stage == AlertStage.ATTENTION || stage == AlertStage.WARNING || stage == AlertStage.YIELD
@@ -67,9 +68,10 @@ class AlertStageJudge {
         notApproachingSinceMillis = null
     }
 
-    private fun clear(nowMillis: Long) {
+    private fun clear(nowMillis: Long, lost: Boolean) {
         stage = AlertStage.CLEARED
         clearedAtMillis = nowMillis
+        signalLost = lost
         targetId = null
         notApproachingSinceMillis = null
     }

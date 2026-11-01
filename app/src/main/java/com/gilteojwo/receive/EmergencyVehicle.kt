@@ -25,4 +25,6 @@ data class EmergencyVehicle(
     // 이 위치가 서버에 기록된 시각(서버 시계, 표의 updated_at). 도착 시간 계산에 쓴다.
     // 실시간 전달은 0.1~0.5초씩 들쭉날쭉 늦게 오므로, 받은 시각보다 이 시각이 실제 움직임과 맞다. 모르면 받은 시각
     val recordedMillis: Long = updatedMillis,
+    val dispatchId: String? = null, // 출동 번호 (양보 확인을 보낼 때 쓴다, R-16)
+    val isEstimated: Boolean = false, // 송신이 끊겨 마지막 위치와 속도로 추정한 위치인지 (R-14)
 )

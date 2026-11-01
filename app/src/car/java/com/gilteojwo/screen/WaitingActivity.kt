@@ -14,6 +14,7 @@ import com.gilteojwo.alert.AlertStage
 import com.gilteojwo.alert.YieldAction
 import com.gilteojwo.approach.ApproachInfo
 import com.gilteojwo.permission.PermissionHelper
+import com.gilteojwo.report.YieldReportStore
 import com.gilteojwo.service.ReceiveService
 import com.gilteojwo.service.ReceiveSnapshot
 import java.text.SimpleDateFormat
@@ -26,7 +27,7 @@ import kotlin.math.roundToInt
  * - 대기: 서버 연결, 주변 긴급차량 수, "알림이 없어도 사이렌에 주의하세요"
  * - 접근 알림(관심·경고): 내 차 기준 레이더, 방향, 거리, 도착 예상 시간
  * - 양보 안내(양보): 큰 그림 하나 + 한 줄 문구 (주행 중에는 이것만 보여준다), 행동 확인 표시
- * - 해제: "지나갔습니다" (3초 뒤 대기로)
+ * - 해제: "지나갔습니다" (3초 뒤 대기로). 양보했으면 "오늘 구급차 1대에 길을 열어줬습니다"(R-17)
  * 계산과 알림(내비 위 카드·가장자리 빛·소리·조명)은 모두 수신 서비스(ReceiveService)가 뒤에서 한다.
  * 이 화면은 그 결과를 보여주기만 해서, 닫거나 내비로 넘어가도 알림은 계속 온다.
  */
@@ -39,6 +40,7 @@ class WaitingActivity : Activity() {
     private lateinit var waitPanel: LinearLayout
     private lateinit var waitTitle: TextView
     private lateinit var serverText: TextView
+    private lateinit var reportText: TextView // 지금까지 길을 열어준 횟수 (R-17)
 
     // 접근 알림·양보 안내·해제
     private lateinit var alertPanel: LinearLayout
@@ -48,6 +50,7 @@ class WaitingActivity : Activity() {
     private lateinit var directionText: TextView
     private lateinit var distanceText: TextView
     private lateinit var adviceText: TextView
+    private lateinit var reportLineText: TextView // 해제 때 "오늘 구급차 1대에 길을 열어줬습니다"
 
     // 시험용 정보 (작게)
     private lateinit var debugText: TextView
@@ -103,6 +106,8 @@ class WaitingActivity : Activity() {
         alertPanel.visibility = View.GONE
         waitTitle.text = if (s.vehicleCount == 0) "주변에 출동 중인 긴급차량이 없습니다" else "출동 중 긴급차량 ${s.vehicleCount}대 · 다가오는 차 없음"
         serverText.text = "서버 연결: ${s.serverStatus}"
+        val today = s.tally.todayCount(YieldReportStore.today())
+        reportText.text = if (s.tally.total > 0) "지금까지 긴급차량 ${s.tally.total}대에 길을 열어줬습니다 (오늘 ${today}대)" else ""
     }
 
     /** 접근 알림(관심·경고), 양보 안내(양보), 해제 화면 */
@@ -128,11 +133,17 @@ class WaitingActivity : Activity() {
         adviceText.visibility = if (advice != null) View.VISIBLE else View.GONE
         if (advice != null) {
             iconText.text = iconFor(advice.action)
-            val adviceColor = if (advice.action == YieldAction.CONFIRMED || advice.action == YieldAction.PASSED) GREEN else color
+            val adviceColor = when (advice.action) {
+                YieldAction.CONFIRMED, YieldAction.PASSED -> GREEN
+                YieldAction.SIGNAL_LOST -> ORANGE
+                else -> color
+            }
             iconText.setTextColor(adviceColor)
             adviceText.text = advice.text
             adviceText.setTextColor(adviceColor)
         }
+        reportLineText.text = s.reportLine ?: ""
+        reportLineText.visibility = if (s.reportLine != null) View.VISIBLE else View.GONE
     }
 
     /** 양보 안내 종류마다 크게 보여줄 그림 (글자 기호) */
@@ -141,6 +152,7 @@ class WaitingActivity : Activity() {
         YieldAction.SLOW_DOWN -> "↘" // 속도를 줄이며 비키기
         YieldAction.STOP_BEFORE_CROSSING -> "✋" // 진입 금지
         YieldAction.CONFIRMED, YieldAction.PASSED -> "✓"
+        YieldAction.SIGNAL_LOST -> "⚠" // 정보가 끊김: 사이렌에 주의
     }
 
     private fun stageColor(stage: AlertStage): Int = when (stage) {
@@ -185,6 +197,8 @@ class WaitingActivity : Activity() {
         waitPanel.setPadding(0, 40, 0, 40)
         waitTitle = addText(waitPanel, 36f, bold = true)
         serverText = addText(waitPanel, 24f)
+        reportText = addText(waitPanel, 28f, bold = true)
+        reportText.setTextColor(GREEN)
         root.addView(waitPanel)
 
         // 알림: 왼쪽 레이더 + 오른쪽 글자
@@ -201,6 +215,8 @@ class WaitingActivity : Activity() {
         directionText = addText(column, 40f, bold = true)
         distanceText = addText(column, 52f, bold = true)
         adviceText = addText(column, 44f, bold = true)
+        reportLineText = addText(column, 32f, bold = true)
+        reportLineText.setTextColor(GREEN)
         alertPanel.addView(column)
         root.addView(alertPanel)
 

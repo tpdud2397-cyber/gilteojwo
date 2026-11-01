@@ -163,6 +163,7 @@ class EmergencyVehicleReceiver(
             speedKmh = row.optDouble("speed_kmh", 0.0),
             updatedMillis = now,
             recordedMillis = serverTimeMillis(row.optString("updated_at")) ?: now,
+            dispatchId = row.optString("dispatch_id").ifEmpty { null },
         )
         vehicles[vehicle.id] = vehicle
     }

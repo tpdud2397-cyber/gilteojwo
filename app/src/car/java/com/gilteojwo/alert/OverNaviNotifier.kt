@@ -29,7 +29,8 @@ class OverNaviNotifier(private val context: Context) {
         manager.createNotificationChannel(channel)
     }
 
-    fun update(alert: AlertState, advice: YieldAdvice?) {
+    /** note: 해제 때 덧붙일 한 줄 (예: "오늘 구급차 1대에 길을 열어줬습니다") */
+    fun update(alert: AlertState, advice: YieldAdvice?, note: String? = null) {
         val target = alert.target
         if (alert.stage == AlertStage.NONE || target == null) {
             if (shownStage != AlertStage.NONE) manager.cancel(notificationId)
@@ -37,14 +38,15 @@ class OverNaviNotifier(private val context: Context) {
             shownAdvice = null
             return
         }
-        if (alert.stage == shownStage && advice?.text == shownAdvice) return
+        val adviceText = listOfNotNull(advice?.text, note).joinToString(" · ").ifEmpty { null }
+        if (alert.stage == shownStage && adviceText == shownAdvice) return
         shownStage = alert.stage
-        shownAdvice = advice?.text
+        shownAdvice = adviceText
 
         // 예: 제목 "구급차 접근 · 경고", 내용 "좌측 후방(7~8시) 400m · 약 24초"
         val title = "${target.vehicle.type.koreanName} 접근 · ${alert.stage.koreanName}"
         val text = listOfNotNull(
-            advice?.text,
+            adviceText,
             "${target.direction.koreanName}(${target.direction.clock}) ${target.distanceMeters.roundToInt()}m",
             target.arrivalText,
         ).joinToString(" · ")
