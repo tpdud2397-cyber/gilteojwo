@@ -37,6 +37,20 @@ class AlertStageJudgeTest {
     }
 
     @Test
+    fun `설정에서 알림 거리를 1,500m로 늘리면 1,200m부터 관심`() {
+        judge.attentionMeters = 1500.0
+
+        assertEquals(AlertStage.ATTENTION, judge.update(listOf(info(1200.0, 70, true)), 0).stage)
+    }
+
+    @Test
+    fun `설정에서 알림 거리를 700m로 줄이면 900m에서는 아직 알림 없음`() {
+        judge.attentionMeters = 700.0
+
+        assertEquals(AlertStage.NONE, judge.update(listOf(info(900.0, 60, true)), 0).stage)
+    }
+
+    @Test
     fun `접근 중이 아니면 가까워도 알림 없음`() {
         assertEquals(AlertStage.NONE, judge.update(listOf(info(100.0, null, false)), 0).stage)
     }

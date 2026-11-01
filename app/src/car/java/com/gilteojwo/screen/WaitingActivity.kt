@@ -1,12 +1,14 @@
 package com.gilteojwo.screen
 
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.gilteojwo.BuildInfo
@@ -15,6 +17,9 @@ import com.gilteojwo.alert.YieldAction
 import com.gilteojwo.approach.ApproachInfo
 import com.gilteojwo.permission.PermissionHelper
 import com.gilteojwo.report.YieldReportStore
+import com.gilteojwo.send.SenderStore
+import com.gilteojwo.sender.SendService
+import com.gilteojwo.sender.SenderActivity
 import com.gilteojwo.service.ReceiveService
 import com.gilteojwo.service.ReceiveSnapshot
 import java.text.SimpleDateFormat
@@ -30,11 +35,13 @@ import kotlin.math.roundToInt
  * - 해제: "지나갔습니다" (3초 뒤 대기로). 양보했으면 "오늘 구급차 1대에 길을 열어줬습니다"(R-17)
  * 계산과 알림(내비 위 카드·가장자리 빛·소리·조명)은 모두 수신 서비스(ReceiveService)가 뒤에서 한다.
  * 이 화면은 그 결과를 보여주기만 해서, 닫거나 내비로 넘어가도 알림은 계속 온다.
+ * 맨 위 '설정' 버튼, 송신 모드가 켜져 있으면(등록된 긴급차량) '송신 화면' 버튼도 보인다.
  */
 class WaitingActivity : Activity() {
     // 맨 위 상태 줄
     private lateinit var headerText: TextView
     private lateinit var problemText: TextView
+    private lateinit var sendScreenButton: Button // 송신 모드일 때만 보인다
 
     // 대기
     private lateinit var waitPanel: LinearLayout
@@ -90,6 +97,8 @@ class WaitingActivity : Activity() {
         val overlay = if (Settings.canDrawOverlays(this)) "가장자리 빛: 허용됨" else "가장자리 빛: '다른 앱 위에 표시' 허용 필요"
         headerText.text = "길터줘 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)} · $overlay"
         problemText.text = s.problems.joinToString("\n")
+        sendScreenButton.visibility = if (SenderStore(this).vehicle != null) View.VISIBLE else View.GONE
+        sendScreenButton.text = if (SendService.latest.isDispatching) "송신 화면 · 긴급출동 중" else "송신 화면"
         debugText.text = debugLines(s)
 
         val target = s.alert.target
@@ -191,6 +200,15 @@ class WaitingActivity : Activity() {
         problemText = addText(root, 18f)
         problemText.setTextColor(RED)
 
+        // 맨 위 버튼 줄: 설정, (송신 모드면) 송신 화면
+        val buttons = LinearLayout(this)
+        buttons.orientation = LinearLayout.HORIZONTAL
+        addButton(buttons, "설정", Color.parseColor("#424242")) { startActivity(Intent(this, SettingsActivity::class.java)) }
+        sendScreenButton = addButton(buttons, "송신 화면", Color.parseColor("#D32F2F")) {
+            startActivity(Intent(this, SenderActivity::class.java))
+        }
+        root.addView(buttons)
+
         // 대기
         waitPanel = LinearLayout(this)
         waitPanel.orientation = LinearLayout.VERTICAL
@@ -238,6 +256,20 @@ class WaitingActivity : Activity() {
         if (bold) text.setTypeface(null, Typeface.BOLD)
         parent.addView(text)
         return text
+    }
+
+    private fun addButton(parent: LinearLayout, label: String, color: Int, onClick: () -> Unit): Button {
+        val button = Button(this)
+        button.text = label
+        button.textSize = 20f
+        button.setTextColor(Color.WHITE)
+        button.setBackgroundColor(color)
+        button.setPadding(48, 0, 48, 0)
+        button.setOnClickListener { onClick() }
+        val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, 110)
+        params.setMargins(0, 8, 24, 8)
+        parent.addView(button, params)
+        return button
     }
 
     private fun timeText(millis: Long): String = SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date(millis))

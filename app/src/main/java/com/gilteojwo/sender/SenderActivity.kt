@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.gilteojwo.BuildConfig
 import com.gilteojwo.BuildInfo
 import com.gilteojwo.receive.VehicleType
 import com.gilteojwo.send.DemoRoute
@@ -26,7 +27,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 폰용 송신 앱 화면 (사양서 '화면 목록'의 송신 화면).
+ * 송신 화면 (사양서 '화면 목록'의 송신 화면). 폰 앱과 차량 앱(Pleos 송신 모드)이 같은 화면을 쓴다.
+ * 차량 앱에서는 수신 화면의 '송신 화면' 버튼으로 열고, 맨 위 '← 돌아가기'로 돌아간다.
  * - 등록 (S-1): 등록 코드를 넣으면 서버에서 차량 ID와 차종을 확인한다. 미등록 코드는 송신 불가
  * - 대기: 차량 정보와 큰 "긴급출동 시작" 버튼 하나
  * - 긴급출동 중 (S-2·S-6): 송신 상태와 "긴급출동 끄기" 버튼만 (운전 중 조작을 없앤다)
@@ -173,6 +175,10 @@ class SenderActivity : Activity() {
         root.setPadding(48, 48, 48, 48)
         headerText = addText(root, 16f)
         headerText.setTextColor(Color.GRAY)
+        // 차량 앱에서만: 연 화면(수신 화면이나 설정)으로 돌아가기. 송신 중에도 수신은 뒤에서 계속 돈다
+        if (BuildConfig.FLAVOR == "car") {
+            addButton(root, "← 돌아가기", 20f, Color.parseColor("#424242"), height = 120) { finish() }
+        }
 
         // 등록
         registerPanel = panel(root)
@@ -192,7 +198,8 @@ class SenderActivity : Activity() {
         vehicleText = addText(standbyPanel, 24f, bold = true)
         addButton(standbyPanel, "긴급출동 시작", 40f, Color.parseColor("#D32F2F"), height = 360) { startDispatch() }
         addText(standbyPanel, 16f).text = "긴급출동 중일 때만 위치를 보냅니다. 평소에는 위치를 보내지 않습니다."
-        // 시연 모드 (S-4): 폰 GPS 대신 미리 정한 경로를 실제 속도로 보낸다. 목표는 에뮬레이터 기본 위치
+        // 시연 모드 (S-4): 내 위치 대신 미리 정한 경로를 실제 속도로 보낸다.
+        // 목표는 폰 앱이면 에뮬레이터 기본 위치, 차량 앱이면 지금 내 차 위치 (SenderLocation.demoTarget)
         addText(standbyPanel, 22f, bold = true).text = "시연 모드"
         for (route in DemoRoute.entries) {
             addButton(standbyPanel, "시연: ${route.koreanName} (${route.totalSeconds}초)", 22f, Color.parseColor("#7B1FA2")) {

@@ -33,9 +33,12 @@ import com.gilteojwo.mylocation.MyPosition
 import com.gilteojwo.receive.DeadReckoning
 import com.gilteojwo.receive.EmergencyVehicle
 import com.gilteojwo.receive.EmergencyVehicleReceiver
+import com.gilteojwo.receive.OwnDispatchFilter
 import com.gilteojwo.receive.YieldAckSender
 import com.gilteojwo.report.YieldReportStore
 import com.gilteojwo.screen.WaitingActivity
+import com.gilteojwo.sender.SendService
+import com.gilteojwo.settings.ReceiveSettings
 import com.gilteojwo.vehiclestate.VehicleState
 import com.gilteojwo.vehiclestate.VehicleStateReader
 import kotlin.math.roundToInt
@@ -47,6 +50,7 @@ import kotlin.math.roundToInt
  * 3) 내비 위 상단 카드와 가장자리 빛(R-10·R-11), 알림음과 음성(R-12), 음악 소리 줄이기(R-13), 앰비언트 조명(R-15)으로 알린다
  * 4) 알림 중 양보를 자동으로 감지해 서버에 익명으로 알리고(R-16), 길을 열어준 횟수를 차 안에 남긴다(R-17)
  * 5) 화면(WaitingActivity)이 열려 있으면 같은 결과를 넘겨 준다
+ * 송신 모드(내 차가 긴급차량)에서도 계속 돈다. 실제 출동 중에는 내 차를 목록에서 빼고, 시연 경로는 그대로 알린다.
  * 안드로이드는 화면 없이 도는 앱을 멈출 수 있어서, 알림창에 '길터줘 수신 중'을 띄워 두는 서비스(포그라운드 서비스)로 만든다.
  */
 class ReceiveService : Service() {
@@ -59,6 +63,7 @@ class ReceiveService : Service() {
     private val yieldDetector = YieldDetector()
     private val yieldAckSender = YieldAckSender()
     private lateinit var reportStore: YieldReportStore
+    private lateinit var settings: ReceiveSettings
 
     private lateinit var notifier: OverNaviNotifier
     private lateinit var edgeGlow: EdgeGlowOverlay
@@ -82,7 +87,8 @@ class ReceiveService : Service() {
         musicDucker = MusicDucker(this)
         ambientLight = AmbientLight(this)
         reportStore = YieldReportStore(this)
-        snapshot = snapshot.copy(tally = reportStore.load())
+        settings = ReceiveSettings(this)
+        snapshot =snapshot.copy(tally = reportStore.load())
         locationTracker = MyLocationTracker(this) { position -> onMyPositionChanged(position) }
         vehicleReceiver = EmergencyVehicleReceiver { list, status -> onVehiclesChanged(list, status) }
         vehicleStateReader = VehicleStateReader(this) { state -> onVehicleStateChanged(state) }
@@ -125,9 +131,12 @@ class ReceiveService : Service() {
 
     /** 내 위치가 새로 올 때마다(약 1초) 계산하고 알린다 */
     private fun onMyPositionChanged(position: MyPosition) {
+        // 송신 모드: 내 차가 실제로 출동 중이면 내 차는 빼고 계산한다 (자기 자신에게 알리지 않게)
+        val others = OwnDispatchFilter.apply(vehicles, SendService.latest.realDispatchId)
         // R-14 송신이 잠깐 끊긴 차는 마지막 위치·속도로 추정하고, 5초 넘게 끊긴 차는 뺀다
-        val current = vehicles.mapNotNull { DeadReckoning.estimate(it, position.timeMillis) }
+        val current = others.mapNotNull { DeadReckoning.estimate(it, position.timeMillis) }
         val results = approachTracker.update(position, current)
+        alertJudge.attentionMeters = settings.alertDistance.meters // 설정 화면의 알림 거리
         val alert = alertJudge.update(results, position.timeMillis)
         val advice = YieldGuide.choose(alert, position.headingDegrees, snapshot.vehicleState)
 
@@ -183,7 +192,8 @@ class ReceiveService : Service() {
     /** 서버 목록이 바뀌면 기억만 해 두고, 계산은 다음 내 위치가 올 때(1초 안) 한다 */
     private fun onVehiclesChanged(list: List<EmergencyVehicle>, status: String) {
         vehicles = list
-        publish(snapshot.copy(serverStatus = status, vehicleCount = list.size))
+        val count = OwnDispatchFilter.apply(list, SendService.latest.realDispatchId).size // 내 차의 실제 출동은 세지 않는다
+        publish(snapshot.copy(serverStatus = status, vehicleCount = count))
     }
 
     private fun onVehicleStateChanged(state: VehicleState) {

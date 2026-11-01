@@ -4,7 +4,7 @@ import com.gilteojwo.approach.ApproachInfo
 
 /**
  * 알림 단계 정하기 (사양서 '알림 단계와 양보 안내').
- * - 관심: 1,000m 안 + 접근 중 / 경고: 500m 안 또는 도착 30초 안 / 양보: 200m 안 또는 도착 15초 안
+ * - 관심: 1,000m(설정의 알림 거리) 안 + 접근 중 / 경고: 500m 안 또는 도착 30초 안 / 양보: 200m 안 또는 도착 15초 안
  * - 해제: 알리던 차가 3초 넘게 '접근 아님'이거나 목록에서 사라짐. 해제는 3초 보여준 뒤 '알림 없음'
  * 위치가 흔들려도 알림이 깜빡이지 않게 두 가지를 지킨다.
  *   ① 단계는 올라가기만 한다 (양보였다가 210m가 돼도 경고로 내려가지 않음)
@@ -12,6 +12,9 @@ import com.gilteojwo.approach.ApproachInfo
  * 긴급차량이 여러 대면 가장 급한 한 대를 알린다. 기준값은 제안값이며 시연 후 조정한다.
  */
 class AlertStageJudge {
+    /** 관심 알림을 시작할 거리. 설정 화면의 '알림 거리'로 바꾼다 (기본 1,000m) */
+    var attentionMeters = ATTENTION_METERS
+
     private var stage = AlertStage.NONE
     private var targetId: String? = null // 알리고 있는 긴급차량
     private var lastTarget: ApproachInfo? = null // 그 차의 마지막 계산 결과 (해제 화면에도 쓴다)
@@ -84,7 +87,7 @@ class AlertStageJudge {
         return when {
             meters <= YIELD_METERS || seconds <= YIELD_SECONDS -> AlertStage.YIELD
             meters <= WARNING_METERS || seconds <= WARNING_SECONDS -> AlertStage.WARNING
-            meters <= ATTENTION_METERS -> AlertStage.ATTENTION
+            meters <= attentionMeters -> AlertStage.ATTENTION
             else -> AlertStage.NONE
         }
     }

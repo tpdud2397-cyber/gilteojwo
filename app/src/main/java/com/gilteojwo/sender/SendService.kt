@@ -1,6 +1,5 @@
 package com.gilteojwo.sender
 
-import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,14 +8,13 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.location.LocationListener
-import android.location.LocationManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.gilteojwo.R
+import com.gilteojwo.geo.GeoPoint
 import com.gilteojwo.send.DemoRoute
 import com.gilteojwo.send.DispatchCheck
 import com.gilteojwo.send.SendHealth
@@ -38,12 +36,15 @@ data class SendState(
     val check: DispatchCheck = DispatchCheck.Ok, // 출동 확인 (S-7)
     val notifiedCount: Int = 0, // 길 열림 현황 (S-8)
     val yieldedCount: Int = 0,
-)
+) {
+    /** 시연이 아닌 실제 출동 번호. 차량 앱 수신이 내 차를 목록에서 뺄 때 쓴다 (시연 중이면 null) */
+    val realDispatchId: String? get() = if (isDispatching && demoRoute == null) dispatchId else null
+}
 
 /**
- * 긴급출동 송신 서비스 (사양서 S-2~S-8).
+ * 긴급출동 송신 서비스 (사양서 S-2~S-8). 폰 앱과 차량 앱(Pleos 송신 모드)이 함께 쓴다.
  * - 시작: 서버에 긴급출동을 시작하고(start_dispatch), 위치를 1초마다 보낸다(send_position)
- *   · 보통: 폰 GPS 위치 (S-3)
+ *   · 보통: 내 위치 (S-3). 폰은 폰 GPS, 차는 Pleos 위치 — 얻는 방법은 SenderLocation이 기기별로 다르다
  *   · 시연 모드: 미리 정한 경로를 실제 속도로 재생한 위치. 경로가 끝나면 긴급출동도 끝낸다 (S-4)
  * - 화면이 꺼지거나 다른 앱을 써도 계속 보낸다. 알림창에 '긴급출동 송신 중'을 띄우는 서비스다 (S-5)
  * - 5초 넘게 보내지 못하면 경고한다 (S-6)
@@ -55,16 +56,16 @@ class SendService : Service() {
     private val server = SenderServer()
     private val mainThread = Handler(Looper.getMainLooper())
     private lateinit var store: SenderStore
-    private lateinit var locationManager: LocationManager
+    private lateinit var location: SenderLocation // 내 위치 (폰 GPS 또는 Pleos 위치)
 
     private var lastFix: SenderFix? = null
-    private var lastHeading = 0.0
     private var lastSuccessMillis: Long? = null
     private var lastError: String? = null
     private var sending = false // 앞의 보내기가 끝나기 전에는 새로 보내지 않는다
     private var running = false
 
     private var demoRoute: DemoRoute? = null
+    private var demoTarget: GeoPoint = DemoRoute.DEMO_TARGET // 시연 경로가 향할 수신 차 위치
     private var demoStartedMillis = 0L
     private var checkAfterMillis = DispatchCheck.CHECK_AFTER_MILLIS
     private var answerWithinMillis = DispatchCheck.ANSWER_WITHIN_MILLIS
@@ -72,19 +73,6 @@ class SendService : Service() {
     private var notifiedCount = 0
     private var yieldedCount = 0
     private var seconds = 0
-
-    // 폰 GPS 위치가 바뀔 때마다 불린다 (시연 모드가 아닐 때)
-    private val locationListener = LocationListener { location ->
-        // 진행 방향은 움직이고 있을 때만 믿는다 (서 있으면 GPS 방향이 흔들린다)
-        if (location.hasBearing() && location.speed > MOVING_METERS_PER_SECOND) lastHeading = location.bearing.toDouble()
-        lastFix = SenderFix(
-            latitude = location.latitude,
-            longitude = location.longitude,
-            headingDegrees = lastHeading,
-            speedKmh = location.speed * 3.6,
-            accuracyMeters = location.accuracy.toDouble(),
-        )
-    }
 
     // 1초마다: 위치 정하기 → 보내기 → 출동 확인 → (3초마다) 길 열림 현황 → 상태 고치기
     private val everySecond = object : Runnable {
@@ -102,7 +90,8 @@ class SendService : Service() {
     override fun onCreate() {
         super.onCreate()
         store = SenderStore(this)
-        locationManager = getSystemService(LocationManager::class.java)
+        // 내 위치가 바뀔 때마다 불린다 (시연 모드가 아닐 때만 켠다)
+        location = SenderLocation(this) { fix -> lastFix = fix }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -118,11 +107,10 @@ class SendService : Service() {
 
     override fun onDestroy() {
         mainThread.removeCallbacksAndMessages(null)
-        runCatching { locationManager.removeUpdates(locationListener) }
+        location.stop()
         super.onDestroy()
     }
 
-    @SuppressLint("MissingPermission") // 화면에서 위치 권한을 받은 뒤에만 시작한다
     private fun startDispatch(intent: Intent?) {
         startForegroundWithStatus("긴급출동을 시작하는 중")
         val code = store.regCode
@@ -134,14 +122,13 @@ class SendService : Service() {
         running = true
 
         demoRoute = intent?.getStringExtra(EXTRA_DEMO_ROUTE)?.let { DemoRoute.valueOf(it) }
+        demoTarget = location.demoTarget()
         demoStartedMillis = System.currentTimeMillis()
         // 시험용: 출동 확인 시간을 줄일 수 있다 (adb로 시작할 때만 쓴다)
         intent?.getIntExtra(EXTRA_CHECK_AFTER_SECONDS, 0)?.takeIf { it > 0 }?.let { checkAfterMillis = it * 1000L }
         intent?.getIntExtra(EXTRA_ANSWER_SECONDS, 0)?.takeIf { it > 0 }?.let { answerWithinMillis = it * 1000L }
 
-        if (demoRoute == null) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, locationListener, Looper.getMainLooper())
-        }
+        if (demoRoute == null) location.start()
         if (store.activeDispatchId == null) {
             server.startDispatch(
                 code,
@@ -166,7 +153,7 @@ class SendService : Service() {
     private fun updateDemoFix(): Boolean {
         val route = demoRoute ?: return true
         val elapsed = (System.currentTimeMillis() - demoStartedMillis) / 1000.0
-        val fix = route.fixAt(DemoRoute.DEMO_TARGET, elapsed)
+        val fix = route.fixAt(demoTarget, elapsed)
         if (fix == null) {
             Log.i(LOG_TAG, "시연 경로 끝: ${route.koreanName}")
             stopDispatch("manual")
@@ -239,7 +226,7 @@ class SendService : Service() {
     /** endType: "manual"(직접 끔, 시연 끝) 또는 "auto"(출동 확인에 답 없음) */
     private fun stopDispatch(endType: String) {
         mainThread.removeCallbacks(everySecond)
-        runCatching { locationManager.removeUpdates(locationListener) }
+        location.stop()
         getSystemService(NotificationManager::class.java).cancel(CHECK_NOTIFICATION_ID)
         running = false
         val code = store.regCode
@@ -339,14 +326,14 @@ class SendService : Service() {
         private const val LOG_TAG = "Gilteojwo"
         private const val CHANNEL = "send_status"
         private const val CHECK_CHANNEL = "dispatch_check"
-        private const val NOTIFICATION_ID = 1
-        private const val CHECK_NOTIFICATION_ID = 2
+        // 차량 앱에서는 수신 서비스와 한 앱이라 번호가 겹치지 않게 한다 (1번은 '길터줘 수신 중', 100번부터는 내비 위 알림)
+        private const val NOTIFICATION_ID = 11
+        private const val CHECK_NOTIFICATION_ID = 12
         private const val ACTION_STOP = "com.gilteojwo.sender.STOP"
         private const val ACTION_CONFIRM = "com.gilteojwo.sender.CONFIRM"
         const val EXTRA_DEMO_ROUTE = "demo_route"
         const val EXTRA_CHECK_AFTER_SECONDS = "check_after_seconds" // 시험용
         const val EXTRA_ANSWER_SECONDS = "answer_seconds" // 시험용
-        private const val MOVING_METERS_PER_SECOND = 1f // 초속 1m(시속 3.6km)보다 빠를 때만 진행 방향을 믿는다
         private const val STATUS_EVERY_SECONDS = 3
 
         var latest: SendState = SendState()

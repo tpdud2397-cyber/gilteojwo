@@ -112,7 +112,9 @@
    - 수신 기능 마무리 (2026-11-01): R-14 끊김 추정(`receive/DeadReckoning`, 5초 넘게 끊기면 해제 + "긴급차량 정보가 끊겼습니다. 사이렌에 주의하세요"), R-16 양보 감지·전송(`alert/YieldDetector`, `receive/YieldAckSender` → yield_acks), R-17 양보 리포트(`report/`, 차 안에만 저장). 위치가 5초 넘게 안 오면 다시 연결(`MyLocationTracker`). 계산 시험 95개. 이것으로 수신 R-1~R-17 전부 구현.
    - 송신 1묶음 완료 (2026-11-01): 폰 앱 등록(S-1)·긴급출동 버튼(S-2)·1초 위치 송신(S-3)·백그라운드 송신(S-5)·송신 상태 경고(S-6). 서버 부르기는 공용 `send/`, 폰 화면·서비스는 `app/src/phone/.../sender/`. 폰 앱을 같은 에뮬레이터에 깔아 확인함(설치 후 `pm grant --user 10 com.gilteojwo.phone android.permission.ACCESS_FINE_LOCATION`). 계산 시험 101개.
    - 송신 2묶음 완료 (2026-11-01): S-4 시연 모드(`send/DemoRoute`, 후방 접근 1,200m·교차로 측면 접근 800m), S-7 출동 확인(`send/DispatchCheck`, 60분 뒤 묻고 2분 안에 답 없으면 자동 종료), S-8 '알림 N대 · 양보 N대'(3초마다 dispatch_status). 양보 기록은 출동 번호 기준으로 고침. 계산 시험 111개. 출동 확인 시험은 폰 화면을 `--ei check_after_seconds 10 --ei answer_seconds 60`으로 열면 짧게 볼 수 있다.
-   - 다음: 송신 3묶음(차량 앱 Pleos 송신 모드·설정 화면).
+   - 송신 3묶음 완료 (2026-11-01): 송신 화면·서비스를 공용 `main/.../sender/`로 옮기고 위치 얻기만 `SenderLocation`(폰 = GPS, 차 = 수신 서비스의 Pleos 위치·계기판 속도)으로 나눔. 차량 앱 설정 화면(`screen/SettingsActivity`: 알림 거리 700/1,000/1,500m, 송신 모드 켜기), 수신 화면에 '설정'·'송신 화면' 버튼. 송신 모드에서도 수신은 계속 돌고, 실제 출동 중에는 내 출동을 수신 목록에서 뺀다(`receive/OwnDispatchFilter`, 시연은 빼지 않아 차량 앱 한 대로 시연 가능). 송신 알림창 번호는 11·12번(수신은 1번). 계산 시험 120개. 차량 앱에 등록하려면 송신 화면에서 등록 코드를 넣는다(폰 앱과 저장소가 따로).
+   - Virtual Console 창이 숨어 있으면 BRAKE 페달 값이 차로 가지 않는다. 'Emulation Controls'의 Brake Pedal 칸(input range)을 바꾸면 반영된다 (11/01).
+   - 다음: 제출 준비(11/15: 기획서, README, 시연 영상), 부팅 자동 시작 확인.
    - 시험으로 송신을 강제로 끊으면(timeout) end_dispatch가 안 불려 출동이 열린 채 남는다. 시험 뒤 그 출동 번호로 end_dispatch를 불러 정리한다.
 
 ## 코드 원칙

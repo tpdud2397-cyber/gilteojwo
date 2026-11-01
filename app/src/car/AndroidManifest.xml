@@ -29,6 +29,8 @@
     <!-- 앱 화면 없이 뒤에서 계속 돌기 (알림창에 '길터줘 수신 중' 표시) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 송신 모드: 긴급출동 중 화면이 꺼져도 위치를 보내기 (알림창에 '긴급출동 송신 중' 표시) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <!-- 차를 켜면 자동으로 시작 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -61,6 +63,29 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="긴급차량 접근 알림: 내비를 쓰는 중에도 주변 긴급차량을 받아 화면·소리로 알린다" />
         </service>
+
+        <!-- 설정: 알림 거리, 송신 모드 켜기 -->
+        <activity
+            android:name=".screen.SettingsActivity"
+            android:exported="false">
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+
+        <!-- Pleos 송신 모드: 폰 앱과 같은 송신 화면·송신 서비스를 쓴다 (긴급차량에 단 차량용) -->
+        <activity
+            android:name=".sender.SenderActivity"
+            android:exported="false"
+            android:launchMode="singleTop">
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+        <service
+            android:name=".sender.SendService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <!-- 차가 켜지거나 새 판이 설치되면 수신 서비스를 자동으로 시작 -->
         <receiver

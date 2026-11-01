@@ -2,7 +2,9 @@ package com.gilteojwo.send
 
 import android.os.Handler
 import android.os.Looper
+import com.gilteojwo.mylocation.MyPosition
 import com.gilteojwo.receive.ServerConfig
+import com.gilteojwo.vehiclestate.VehicleState
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -107,11 +109,25 @@ class SenderServer {
     }
 }
 
-/** 보낼 위치 한 번 (사양서 S-3: 위도, 경도, 진행 방향, 속도, 정확도) */
+/** 보낼 위치 한 번 (사양서 S-3: 위도, 경도, 진행 방향, 속도, 정확도). 정확도를 모르면 null */
 data class SenderFix(
     val latitude: Double,
     val longitude: Double,
     val headingDegrees: Double,
     val speedKmh: Double,
-    val accuracyMeters: Double,
-)
+    val accuracyMeters: Double?,
+) {
+    companion object {
+        /**
+         * Pleos 송신 모드: 차가 받은 내 위치(FusedLocation)와 계기판 속도로 만든다.
+         * 속도를 아직 못 받았으면 0. Pleos 위치에는 m 단위 정확도가 없어서 비워 보낸다 (서버는 빈 값 허용)
+         */
+        fun fromCar(position: MyPosition, state: VehicleState): SenderFix = SenderFix(
+            latitude = position.point.latitude,
+            longitude = position.point.longitude,
+            headingDegrees = position.headingDegrees,
+            speedKmh = state.speedKmh ?: 0.0,
+            accuracyMeters = null,
+        )
+    }
+}
