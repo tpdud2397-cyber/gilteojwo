@@ -3,8 +3,11 @@ package com.gilteojwo.alert
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +18,7 @@ import android.view.WindowManager
 
 /**
  * 내비 칸 가장자리 빛 (사양서 R-10·R-11, 11/01 사용자 그림).
- * '다른 앱 위에 표시' 권한으로 내비 칸 테두리에 얇은 붉은 띠를 덮어 그린다. 터치는 그대로 아래(내비)로 통과한다.
+ * '다른 앱 위에 표시' 권한으로 내비 칸 가장자리에 붉은 빛(그라데이션)을 덮어 그린다. 터치는 그대로 아래(내비)로 통과한다.
  * 어느 면을 얼마나 진하게 그릴지는 EdgeGlow가 정하고, 여기서는 그리기만 한다.
  * 왼쪽 주행 화면(속도·경고등)은 가리지 않는다.
  */
@@ -99,38 +102,68 @@ class EdgeGlowOverlay(context: Context) {
         return metrics.widthPixels to metrics.heightPixels
     }
 
-    /** 네 가장자리 중 켜진 면에 붉은 띠를 그린다. 진할수록 두껍고 불투명하다 */
+    /**
+     * 켜진 면마다 가장자리 가운데에서 안쪽으로 퍼지는 반타원 모양 빛을 그린다 (11/01 사용자 그림).
+     * 가운데가 가장 진하고 바깥으로 갈수록 투명해진다(그라데이션).
+     * 가까울수록(strength가 클수록) 안쪽으로 깊게 커지고 진하다. 멀면 얇고 연하다.
+     */
     private class GlowView(context: Context) : View(context) {
         var glow = EdgeGlow.OFF
-        private val paint = Paint()
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val stretch = Matrix()
 
         override fun onDraw(canvas: Canvas) {
             val strength = glow.strength
-            val thickness = THIN_PX + (THICK_PX - THIN_PX) * strength
-            // 바깥쪽에 넓고 옅은 띠, 안쪽에 좁고 진한 띠를 겹쳐 빛이 번지는 것처럼 보이게 한다
-            drawEdges(canvas, thickness * 2.5f, (90 * strength).toInt())
-            drawEdges(canvas, thickness, (255 * strength).toInt())
+            // 안쪽으로 들어오는 깊이: 멀면 5%, 가까우면 20% (내비 칸의 20%까지만 쓴다, 11/01 사용자 요청)
+            val depthFraction = MIN_DEPTH + (MAX_DEPTH - MIN_DEPTH) * strength
+            val alpha = (255 * (MIN_ALPHA + (1 - MIN_ALPHA) * strength)).toInt()
+            for (edge in glow.edges) drawGlow(canvas, edge, depthFraction, alpha)
         }
 
-        private fun drawEdges(canvas: Canvas, thickness: Float, alpha: Int) {
-            paint.color = Color.argb(alpha, 244, 67, 54)
+        private fun drawGlow(canvas: Canvas, edge: ScreenEdge, depthFraction: Float, alpha: Int) {
             val w = width.toFloat()
             val h = height.toFloat()
-            for (edge in glow.edges) {
-                when (edge) {
-                    ScreenEdge.TOP -> canvas.drawRect(0f, 0f, w, thickness, paint)
-                    ScreenEdge.BOTTOM -> canvas.drawRect(0f, h - thickness, w, h, paint)
-                    ScreenEdge.LEFT -> canvas.drawRect(0f, 0f, thickness, h, paint)
-                    ScreenEdge.RIGHT -> canvas.drawRect(w - thickness, 0f, w, h, paint)
-                }
+            // 위·아래 빛은 세로의, 왼쪽·오른쪽 빛은 가로의 depthFraction만큼 안쪽으로 들어온다
+            val depth = if (edge == ScreenEdge.TOP || edge == ScreenEdge.BOTTOM) h * depthFraction else w * depthFraction
+            // 빛의 중심(가장자리 가운데)과, 가장자리를 따라 퍼지는 길이(반지름)
+            val centerX = when (edge) {
+                ScreenEdge.LEFT -> 0f
+                ScreenEdge.RIGHT -> w
+                else -> w / 2
             }
+            val centerY = when (edge) {
+                ScreenEdge.TOP -> 0f
+                ScreenEdge.BOTTOM -> h
+                else -> h / 2
+            }
+            val alongEdge = if (edge == ScreenEdge.TOP || edge == ScreenEdge.BOTTOM) w / 2 else h / 2
+
+            // 가운데 진하게 → 중간 → 바깥 투명. 원 모양 빛을 만든 뒤 가장자리를 따라 길게 늘여 반타원으로 만든다
+            val gradient = RadialGradient(
+                centerX, centerY, depth,
+                intArrayOf(red(alpha), red(alpha * 6 / 10), red(0)),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+            stretch.reset()
+            if (edge == ScreenEdge.TOP || edge == ScreenEdge.BOTTOM) {
+                stretch.setScale(alongEdge / depth, 1f, centerX, centerY)
+            } else {
+                stretch.setScale(1f, alongEdge / depth, centerX, centerY)
+            }
+            gradient.setLocalMatrix(stretch)
+            paint.shader = gradient
+            canvas.drawRect(0f, 0f, w, h, paint)
         }
+
+        private fun red(alpha: Int) = Color.argb(alpha, 255, 59, 48)
     }
 
     companion object {
-        private const val THIN_PX = 12f // 가장 멀 때 두께 (2560×1440 화면 기준)
-        private const val THICK_PX = 36f // 가장 가까울 때 두께
+        private const val MIN_DEPTH = 0.05f // 가장 멀 때: 내비 칸의 5%만큼 안쪽으로 (얇게)
+        private const val MAX_DEPTH = 0.20f // 가장 가까울 때: 내비 칸의 20%까지만 (11/01 사용자 요청)
+        private const val MIN_ALPHA = 0.35f // 가장 멀 때 가운데 진하기 (연하게)
         private const val BLINK_MILLIS = 500L
-        private const val BLINK_DIM_ALPHA = 0.2f
+        private const val BLINK_DIM_ALPHA = 0.45f // 깜빡일 때 어두운 순간에도 빛이 남게 (꺼지지 않고 숨 쉬듯)
     }
 }
