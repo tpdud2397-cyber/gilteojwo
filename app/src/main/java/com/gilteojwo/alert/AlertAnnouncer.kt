@@ -86,5 +86,8 @@ class AlertAnnouncer {
 
     companion object {
         const val YIELD_REPEAT_MILLIS = 10_000L // 양보 문구는 10초마다 되풀이 (제안값)
+
+        /** 음악 소리를 줄이는 단계 (사양서: 경고부터 줄이고, 해제되면 되돌린다. R-13) */
+        fun lowersMusic(stage: AlertStage): Boolean = stage == AlertStage.WARNING || stage == AlertStage.YIELD
     }
 }

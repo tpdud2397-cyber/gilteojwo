@@ -96,6 +96,19 @@ class YieldGuideTest {
     }
 
     @Test
+    fun `양보 문구마다 화면에 크게 보여줄 그림 종류가 정해진다`() {
+        val signaling = driving.copy(turnSignal = TurnSignal.RIGHT)
+        assertEquals(YieldAction.MOVE_RIGHT, YieldGuide.choose(alert(AlertStage.YIELD, RelativeDirection.REAR), 0.0, driving)?.action)
+        assertEquals(YieldAction.SLOW_DOWN, YieldGuide.choose(alert(AlertStage.YIELD, RelativeDirection.FRONT, 180.0), 0.0, driving)?.action)
+        assertEquals(
+            YieldAction.STOP_BEFORE_CROSSING,
+            YieldGuide.choose(alert(AlertStage.YIELD, RelativeDirection.LEFT, 90.0), 0.0, stoppedWithBrake)?.action,
+        )
+        assertEquals(YieldAction.CONFIRMED, YieldGuide.choose(alert(AlertStage.YIELD, RelativeDirection.REAR), 0.0, signaling)?.action)
+        assertEquals(YieldAction.PASSED, YieldGuide.choose(alert(AlertStage.CLEARED, RelativeDirection.FRONT), 0.0, driving)?.action)
+    }
+
+    @Test
     fun `관심·경고 단계에는 양보 문구가 없다`() {
         assertNull(YieldGuide.choose(alert(AlertStage.ATTENTION, RelativeDirection.REAR), 0.0, driving))
         assertNull(YieldGuide.choose(alert(AlertStage.WARNING, RelativeDirection.REAR), 0.0, driving))

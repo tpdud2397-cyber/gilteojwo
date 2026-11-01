@@ -8,7 +8,7 @@ import org.junit.Test
 /** 사양서 '알림 단계' 표의 소리: 관심 알림음 1회 / 경고 오는 쪽 알림음 + 음성 / 양보 음성 / 해제 완료음 */
 class AlertAnnouncerTest {
     private val announcer = AlertAnnouncer()
-    private val moveRight = YieldAdvice("우측으로 비켜주세요")
+    private val moveRight = YieldAdvice("우측으로 비켜주세요", YieldAction.MOVE_RIGHT)
 
     @Test
     fun `관심이 되면 알림음만 한 번`() {
@@ -44,7 +44,7 @@ class AlertAnnouncerTest {
 
     @Test
     fun `양보를 확인하면 확인했습니다를 한 번 말하고 되풀이를 멈춘다`() {
-        val confirmed = YieldAdvice("확인했습니다", isConfirmed = true)
+        val confirmed = YieldAdvice("확인했습니다", YieldAction.CONFIRMED)
         announcer.next(alertOf(AlertStage.YIELD, meters = 190.0), moveRight, 0)
         val said = announcer.next(alertOf(AlertStage.YIELD, meters = 150.0), confirmed, 2000)
         val later = announcer.next(alertOf(AlertStage.YIELD, meters = 30.0), confirmed, 15000)
@@ -56,7 +56,7 @@ class AlertAnnouncerTest {
     @Test
     fun `해제가 되면 완료음과 지나갔습니다`() {
         announcer.next(alertOf(AlertStage.YIELD, meters = 50.0), moveRight, 0)
-        val result = announcer.next(alertOf(AlertStage.CLEARED, approaching = false), YieldAdvice("지나갔습니다"), 4000)
+        val result = announcer.next(alertOf(AlertStage.CLEARED, approaching = false), YieldAdvice("지나갔습니다", YieldAction.PASSED), 4000)
 
         assertEquals(Announcement(SoundCue.DONE, "지나갔습니다"), result)
     }
@@ -68,6 +68,15 @@ class AlertAnnouncerTest {
         val result = announcer.next(alertOf(AlertStage.WARNING, RelativeDirection.RIGHT, 480.0), null, 20000)
 
         assertEquals(Announcement(SoundCue.RIGHT, "오른쪽에서 구급차, 약 500미터"), result)
+    }
+
+    @Test
+    fun `경고와 양보 동안에만 음악 소리를 줄인다`() {
+        assertEquals(
+            listOf(false, false, true, true, false),
+            listOf(AlertStage.NONE, AlertStage.ATTENTION, AlertStage.WARNING, AlertStage.YIELD, AlertStage.CLEARED)
+                .map { AlertAnnouncer.lowersMusic(it) },
+        )
     }
 
     @Test

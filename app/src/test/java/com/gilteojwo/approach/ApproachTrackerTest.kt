@@ -107,6 +107,19 @@ class ApproachTrackerTest {
     }
 
     @Test
+    fun `내 진행 방향 기준 긴급차량의 정확한 각도도 알려준다 (레이더용)`() {
+        // 북쪽을 보고 있을 때 남동쪽(동쪽 300m, 남쪽 300m)에 있으면 135도
+        val southEast = tracker.update(me(0), listOf(ambulance(CITY_HALL.moved(-300.0, 300.0), 0.0, 0))).single()
+        // 동쪽을 보고 있을 때 북쪽에 있으면 270도 (왼쪽)
+        val headingEast = ApproachTracker()
+            .update(MyPosition(CITY_HALL, 90.0, 0), listOf(ambulance(CITY_HALL.moved(400.0, 0.0), 0.0, 0)))
+            .single()
+
+        assertEquals(135.0, southEast.relativeAngleDegrees, 1.0)
+        assertEquals(270.0, headingEast.relativeAngleDegrees, 1.0)
+    }
+
+    @Test
     fun `가까운 차가 목록 앞에 온다`() {
         val far = ambulance(CITY_HALL.moved(-900.0, 0.0), 0.0, 0, id = "먼 차")
         val near = ambulance(CITY_HALL.moved(200.0, 0.0), 180.0, 0, id = "가까운 차")

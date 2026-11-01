@@ -6,8 +6,19 @@ import com.gilteojwo.geo.GeoMath
 import com.gilteojwo.vehiclestate.TurnSignal
 import com.gilteojwo.vehiclestate.VehicleState
 
-/** 양보 안내 한 줄. isConfirmed = 운전자가 양보 행동(우측 방향지시등)을 해서 반복 안내를 멈출 때 */
-data class YieldAdvice(val text: String, val isConfirmed: Boolean = false)
+/** 양보 안내의 종류. 화면에 크게 보여줄 그림 하나를 고르는 데 쓴다 (사양서: 큰 아이콘 1개 + 한 줄 문구) */
+enum class YieldAction {
+    MOVE_RIGHT, // 우측으로 비켜주세요
+    SLOW_DOWN, // 속도를 줄이고 진로를 비켜주세요
+    STOP_BEFORE_CROSSING, // 녹색 신호여도 교차로에 진입하지 마세요
+    CONFIRMED, // 확인했습니다 (양보 행동을 함)
+    PASSED, // 지나갔습니다
+}
+
+/** 양보 안내 한 줄과 그 종류. isConfirmed = 운전자가 양보 행동(우측 방향지시등)을 해서 반복 안내를 멈출 때 */
+data class YieldAdvice(val text: String, val action: YieldAction) {
+    val isConfirmed: Boolean get() = action == YieldAction.CONFIRMED
+}
 
 /**
  * 양보 안내 문구 고르기 (사양서 '양보 안내' 표, 도로교통법 제29조).
@@ -31,22 +42,23 @@ object YieldGuide {
         return when (alert.stage) {
             // 막 지나가서 해제를 기다리는 3초 동안은 새 안내를 하지 않는다 (지나간 차에 비키라고 하지 않게)
             AlertStage.YIELD -> if (target.isApproaching) duringYield(target, myHeadingDegrees, car) else null
-            AlertStage.CLEARED -> YieldAdvice(if (isStopped(car)) "지나갔습니다. 출발하셔도 됩니다" else "지나갔습니다")
+            AlertStage.CLEARED ->
+                YieldAdvice(if (isStopped(car)) "지나갔습니다. 출발하셔도 됩니다" else "지나갔습니다", YieldAction.PASSED)
             else -> null
         }
     }
 
     private fun duringYield(target: ApproachInfo, myHeadingDegrees: Double, car: VehicleState): YieldAdvice {
-        if (car.turnSignal == TurnSignal.RIGHT) return YieldAdvice("확인했습니다", isConfirmed = true)
+        if (car.turnSignal == TurnSignal.RIGHT) return YieldAdvice("확인했습니다", YieldAction.CONFIRMED)
 
         val headingGap = GeoMath.angleDifference(target.vehicle.headingDegrees, myHeadingDegrees)
         val isCrossing = headingGap in CROSSING_MIN_DEGREES..CROSSING_MAX_DEGREES
         if (isStopped(car) && car.brakePressed == true && isCrossing) {
-            return YieldAdvice("녹색 신호여도 교차로에 진입하지 마세요")
+            return YieldAdvice("녹색 신호여도 교차로에 진입하지 마세요", YieldAction.STOP_BEFORE_CROSSING)
         }
 
-        if (target.direction in REAR_DIRECTIONS) return YieldAdvice("우측으로 비켜주세요")
-        return YieldAdvice("속도를 줄이고 진로를 비켜주세요")
+        if (target.direction in REAR_DIRECTIONS) return YieldAdvice("우측으로 비켜주세요", YieldAction.MOVE_RIGHT)
+        return YieldAdvice("속도를 줄이고 진로를 비켜주세요", YieldAction.SLOW_DOWN)
     }
 
     private fun isStopped(car: VehicleState): Boolean {

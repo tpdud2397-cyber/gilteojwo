@@ -9,6 +9,7 @@ data class ApproachInfo(
     val direction: RelativeDirection, // 내 차 기준 어느 쪽에 있는지
     val arrivalSeconds: Int?, // 도착 예상 시간(초). 접근 중이 아니면 null
     val isApproaching: Boolean, // 접근 중인지
+    val relativeAngleDegrees: Double = 0.0, // 내 진행 방향을 0°로 본 긴급차량 쪽 정확한 각도 (시계 방향, 레이더용)
 ) {
     /**
      * 화면·음성용 도착 시간. 예: "약 12초", "약 45초". 도착 시간이 없으면 null.

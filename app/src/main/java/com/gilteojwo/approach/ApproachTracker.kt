@@ -29,6 +29,7 @@ class ApproachTracker {
         val distance = GeoMath.distanceMeters(my.point, vehicle.point)
         val bearingToVehicle = GeoMath.bearingDegrees(my.point, vehicle.point)
         val direction = RelativeDirection.of(my.headingDegrees, bearingToVehicle)
+        val relativeAngle = GeoMath.normalize(bearingToVehicle - my.headingDegrees) // 레이더에 점을 찍을 정확한 각도
 
         // 지금 거리를 기록하고, 5초보다 오래된 기록은 버린다.
         // 기록 시각은 내 위치 시각이 아니라 '긴급차량 위치가 서버에 기록된 시각'이다.
@@ -51,7 +52,7 @@ class ApproachTracker {
         // 막 지나간 차는 5초 전보다 거리가 짧아 보여도(50m 뒤 → 30m 앞) 다가오는 것이 아니다.
         val arrivalSeconds = if (isApproaching) (distance / closingSpeed).roundToInt() else null
 
-        return ApproachInfo(vehicle, distance, direction, arrivalSeconds, isApproaching)
+        return ApproachInfo(vehicle, distance, direction, arrivalSeconds, isApproaching, relativeAngle)
     }
 
     /** 가장 오래된 기록과 가장 최근 기록을 비교해, 1초에 몇 m씩 가까워지는지. 기록이 하나뿐이면 0 */

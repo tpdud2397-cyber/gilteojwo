@@ -14,8 +14,11 @@ import android.util.Log
 import com.gilteojwo.R
 import com.gilteojwo.alert.AlertAnnouncer
 import com.gilteojwo.alert.AlertStageJudge
+import com.gilteojwo.alert.AmbientCue
+import com.gilteojwo.alert.AmbientLight
 import com.gilteojwo.alert.EdgeGlow
 import com.gilteojwo.alert.EdgeGlowOverlay
+import com.gilteojwo.alert.MusicDucker
 import com.gilteojwo.alert.OverNaviNotifier
 import com.gilteojwo.alert.SoundPlayer
 import com.gilteojwo.alert.VoiceGuide
@@ -35,7 +38,7 @@ import kotlin.math.roundToInt
  * 수신 서비스: 길터줘의 '두뇌'. 앱 화면을 열지 않아도(내비를 보는 중에도) 뒤에서 계속 돈다.
  * 1) 내 위치(R-1), 긴급차량(R-2), 내 차 상태(R-5~R-8)를 받는다
  * 2) 내 위치가 올 때마다(약 1초) 거리·방향·접근(R-3·R-4) → 알림 단계 → 양보 문구를 계산한다
- * 3) 내비 위 상단 카드와 가장자리 빛(R-10·R-11), 알림음과 음성(R-12)으로 알린다
+ * 3) 내비 위 상단 카드와 가장자리 빛(R-10·R-11), 알림음과 음성(R-12), 음악 소리 줄이기(R-13), 앰비언트 조명(R-15)으로 알린다
  * 4) 화면(WaitingActivity)이 열려 있으면 같은 결과를 넘겨 준다
  * 안드로이드는 화면 없이 도는 앱을 멈출 수 있어서, 알림창에 '길터줘 수신 중'을 띄워 두는 서비스(포그라운드 서비스)로 만든다.
  */
@@ -51,6 +54,8 @@ class ReceiveService : Service() {
     private lateinit var edgeGlow: EdgeGlowOverlay
     private lateinit var soundPlayer: SoundPlayer
     private lateinit var voiceGuide: VoiceGuide
+    private lateinit var musicDucker: MusicDucker
+    private lateinit var ambientLight: AmbientLight
 
     private var vehicles: List<EmergencyVehicle> = emptyList()
     private var snapshot = ReceiveSnapshot()
@@ -64,6 +69,8 @@ class ReceiveService : Service() {
         edgeGlow = EdgeGlowOverlay(this)
         soundPlayer = SoundPlayer()
         voiceGuide = VoiceGuide(this)
+        musicDucker = MusicDucker(this)
+        ambientLight = AmbientLight(this)
         locationTracker = MyLocationTracker(this) { position -> onMyPositionChanged(position) }
         vehicleReceiver = EmergencyVehicleReceiver { list, status -> onVehiclesChanged(list, status) }
         vehicleStateReader = VehicleStateReader(this) { state -> onVehicleStateChanged(state) }
@@ -73,6 +80,7 @@ class ReceiveService : Service() {
         startPart("긴급차량 수신") { vehicleReceiver.start() }
         startPart("내 차 상태") { vehicleStateReader.start() }
         startPart("음성") { voiceGuide.start() }
+        startPart("앰비언트 조명") { ambientLight.start() }
         Log.i(LOG_TAG, "수신 서비스 시작")
     }
 
@@ -88,6 +96,8 @@ class ReceiveService : Service() {
         runCatching { edgeGlow.stop() }
         runCatching { notifier.stop() }
         runCatching { voiceGuide.stop() }
+        runCatching { musicDucker.lower(false) }
+        runCatching { ambientLight.stop() }
         Log.i(LOG_TAG, "수신 서비스 끝")
         super.onDestroy()
     }
@@ -107,9 +117,11 @@ class ReceiveService : Service() {
         val alert = alertJudge.update(results, position.timeMillis)
         val advice = YieldGuide.choose(alert, position.headingDegrees, snapshot.vehicleState)
 
-        // 알리기: 내비 위 카드, 가장자리 빛, 소리·음성
+        // 알리기: 내비 위 카드, 가장자리 빛, 앰비언트 조명, 음악 줄이기, 소리·음성
         notifier.update(alert, advice)
         edgeGlow.show(EdgeGlow.of(alert))
+        ambientLight.show(AmbientCue.of(alert.stage))
+        musicDucker.lower(AlertAnnouncer.lowersMusic(alert.stage))
         announcer.next(alert, advice, position.timeMillis)?.let { announcement ->
             announcement.sound?.let { soundPlayer.play(it) }
             announcement.speech?.let { voiceGuide.speak(it, afterBeep = announcement.sound != null) }
