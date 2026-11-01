@@ -36,6 +36,9 @@ google-services.json
 # Android Profiling
 *.hprof
 
+# 가짜 구급차 등록 코드 (비밀). tools/가짜구급차.bat이 읽는다
+tools/등록코드.txt
+
 # Claude Code: 개인 설정과 작업용 폴더는 올리지 않는다
 .claude/settings.local.json
 .claude/worktrees/
