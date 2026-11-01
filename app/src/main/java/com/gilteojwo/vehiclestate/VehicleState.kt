@@ -34,7 +34,16 @@ data class VehicleState(
     val gear: Gear = Gear.UNKNOWN,
     val brakePressed: Boolean? = null,
     val turnSignal: TurnSignal = TurnSignal.UNKNOWN,
+    val drivingRestricted: Boolean? = null, // R-9 차의 주행 제한 상태 (CarUxRestrictions)
 ) {
+    /**
+     * 주행 중인가 (R-9): 화면을 단순하게 할지 정한다.
+     * 차가 알려주는 주행 제한 상태를 먼저 믿는다 (에뮬레이터: 기어가 P를 벗어나면 걸림).
+     * 그 값을 못 읽으면 기어 D·R이거나 움직이고 있으면 주행 중으로 본다.
+     */
+    val isDriving: Boolean
+        get() = drivingRestricted ?: (gear == Gear.D || gear == Gear.R || (speedKmh ?: 0.0) > 0.0)
+
     /** 예: "14 km/h · 기어 D · 브레이크 안 밟음 · 방향지시등 오른쪽" */
     fun describe(): String {
         val speed = speedKmh?.let { "%.0f km/h".format(it) } ?: "속도 확인 중"

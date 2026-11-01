@@ -147,7 +147,7 @@ class ReceiveService : Service() {
             val target = alert.target
             target?.vehicle?.dispatchId?.let { yieldAckSender.send(it, status, position.point) }
             if (status == YieldStatus.YIELDED && target != null) {
-                tally = reportStore.addYield()
+                tally = reportStore.addYield(target.vehicle.type)
                 yieldedVehicleId = target.vehicle.dispatchId ?: target.vehicle.id // 출동마다 구분
             }
         }

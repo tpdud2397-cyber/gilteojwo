@@ -6,6 +6,7 @@ import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
 import ai.pleos.playground.vehicle.listener.TurnSignalStateListener
 import android.car.Car
 import android.car.VehiclePropertyIds
+import android.car.drivingstate.CarUxRestrictionsManager
 import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
 import android.content.Context
@@ -14,8 +15,9 @@ import android.os.Looper
 import android.util.Log
 
 /**
- * 내 차 상태 읽기 (R-5 속도, R-6 브레이크, R-7 방향지시등, R-8 기어).
+ * 내 차 상태 읽기 (R-5 속도, R-6 브레이크, R-7 방향지시등, R-8 기어, R-9 주행 제한).
  * - 속도, 기어: 안드로이드 표준 차량 속성 (Pleos 안내: 계기판도 PERF_VEHICLE_SPEED를 쓰고, Pleos 기어 API는 폐지 예정)
+ * - 주행 제한: 안드로이드 표준 CarUxRestrictions (주행 중이라 화면을 단순하게 해야 하는지)
  * - 브레이크 페달, 방향지시등: Pleos Vehicle SDK
  * 값이 하나라도 바뀌면 전체 상태를 onChanged로 알려준다. 항상 메인 스레드에서 부른다.
  * 시험 화면 ⑦(sdktest/VehicleStateTest)에서 확인한 방법을 본 앱용으로 옮겼다.
@@ -24,6 +26,7 @@ class VehicleStateReader(private val context: Context, private val onChanged: (V
     private val mainThread = Handler(Looper.getMainLooper())
     private var car: Car? = null // 안드로이드 차량 서비스
     private var propertyManager: CarPropertyManager? = null
+    private var uxManager: CarUxRestrictionsManager? = null
     private val vehicle = Vehicle(context) // Pleos Vehicle SDK
     private var state = VehicleState()
 
@@ -83,7 +86,17 @@ class VehicleStateReader(private val context: Context, private val onChanged: (V
             subscribe(manager, VehiclePropertyIds.GEAR_SELECTION, CarPropertyManager.SENSOR_RATE_ONCHANGE)
         }
 
-        // 2) Pleos Vehicle SDK: 시작한 뒤 브레이크·방향지시등을 구독한다 (연결이 끝나면 SDK가 알아서 등록한다)
+        // 2) 주행 제한: 지금 값을 읽고, 바뀔 때마다 받는다 (에뮬레이터는 기어가 P를 벗어나면 걸린다)
+        val ux = connectedCar?.getCarManager(Car.CAR_UX_RESTRICTION_SERVICE) as? CarUxRestrictionsManager
+        uxManager = ux
+        if (ux == null) {
+            Log.w(LOG_TAG, "주행 제한 상태를 읽을 수 없음 (기어·속도로 판단)")
+        } else {
+            ux.currentCarUxRestrictions?.let { onDrivingRestriction(it.isRequiresDistractionOptimization) }
+            ux.registerListener { changed -> onDrivingRestriction(changed.isRequiresDistractionOptimization) }
+        }
+
+        // 3) Pleos Vehicle SDK: 시작한 뒤 브레이크·방향지시등을 구독한다 (연결이 끝나면 SDK가 알아서 등록한다)
         vehicle.initialize()
         vehicle.getBrake().registerBrakePedalStatus(brakeListener)
         vehicle.getTurnSignal().registerTurnSignalState(turnSignalListener)
@@ -91,6 +104,7 @@ class VehicleStateReader(private val context: Context, private val onChanged: (V
 
     fun stop() {
         runCatching { propertyManager?.unregisterCallback(propertyCallback) }
+        runCatching { uxManager?.unregisterListener() }
         runCatching { vehicle.getBrake().unregisterBrakePedalStatus(brakeListener) }
         runCatching { vehicle.getTurnSignal().unregisterTurnSignalState(turnSignalListener) }
         runCatching { vehicle.release() }
@@ -105,6 +119,12 @@ class VehicleStateReader(private val context: Context, private val onChanged: (V
         } catch (e: SecurityException) {
             Log.w(LOG_TAG, "차량 속성 권한 없음 (번호 $propertyId)")
         }
+    }
+
+    /** R-9 주행 제한이 바뀌었다. 기록으로도 남겨 `adb logcat -s Gilteojwo`로 확인할 수 있게 한다 */
+    private fun onDrivingRestriction(restricted: Boolean) {
+        Log.i(LOG_TAG, "주행 제한: ${if (restricted) "걸림 (화면을 단순하게)" else "풀림"}")
+        update { it.copy(drivingRestricted = restricted) }
     }
 
     /** 값 하나를 바꾸고 전체 상태를 알려준다. 콜백은 여러 스레드에서 오므로 메인 스레드에서 차례로 처리한다 */

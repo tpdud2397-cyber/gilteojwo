@@ -69,7 +69,7 @@
 - Vehicle SDK: 결과는 비동기 콜백(onComplete/onFailed)으로 온다. initialize()와 release()를 쓰고, checkXXXCapabilities로 지원 여부와 범위를 먼저 확인한다.
 - Light 도메인: setAmbientLightBrightness, setAmbientLightBrightnessColor(색은 32비트 ARGB 숫자), setAmbientLightSwitch. 구역은 SeatArea(좌석 영역) 단위이고 checkAmbientLight...Capabilities로 지원 구역을 받는다.
 - 속도·기어는 안드로이드 표준 차량 속성으로 읽는다: 속도 `PERF_VEHICLE_SPEED`(Pleos FAQ: 계기판과 같은 값), 기어 `GEAR_SELECTION`(Pleos의 Gear API는 폐지 예정). 브레이크 페달·방향지시등은 Vehicle SDK(Brake, TurnSignal).
-- 주행 제한 강제 켜기/끄기 (집 PC에서 Claude Code가 실행): `adb shell cmd hmg_car_service --service drivingstate driving_regulation on` / `off`.
+- 주행 제한 강제 켜기/끄기 (Pleos ADB 안내 문서): `adb shell cmd hmg_car_service --service drivingstate driving_regulation on` / `off`. 단, 지금 에뮬레이터에서는 "Can't find service: hmg_car_service"로 안 된다 (11/01). Virtual Console에서 기어를 D로 바꾸면 주행 제한이 걸린다.
 - FusedLocation: LocationData에 위도·경도·고도·진행 방향·신뢰도·시각이 있고 속도는 없다. isSupported()를 먼저 부른다. 안드로이드 표준 위치 권한의 동작은 보장하지 않는다고 문서에 적혀 있다.
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
 - 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch·check_vehicle(등록 확인)·dispatch_status(알림·양보 수, 11/01 추가). 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다(발표 전 확인).
@@ -114,7 +114,8 @@
    - 송신 2묶음 완료 (2026-11-01): S-4 시연 모드(`send/DemoRoute`, 후방 접근 1,200m·교차로 측면 접근 800m), S-7 출동 확인(`send/DispatchCheck`, 60분 뒤 묻고 2분 안에 답 없으면 자동 종료), S-8 '알림 N대 · 양보 N대'(3초마다 dispatch_status). 양보 기록은 출동 번호 기준으로 고침. 계산 시험 111개. 출동 확인 시험은 폰 화면을 `--ei check_after_seconds 10 --ei answer_seconds 60`으로 열면 짧게 볼 수 있다.
    - 송신 3묶음 완료 (2026-11-01): 송신 화면·서비스를 공용 `main/.../sender/`로 옮기고 위치 얻기만 `SenderLocation`(폰 = GPS, 차 = 수신 서비스의 Pleos 위치·계기판 속도)으로 나눔. 차량 앱 설정 화면(`screen/SettingsActivity`: 알림 거리 700/1,000/1,500m, 송신 모드 켜기), 수신 화면에 '설정'·'송신 화면' 버튼. 송신 모드에서도 수신은 계속 돌고, 실제 출동 중에는 내 출동을 수신 목록에서 뺀다(`receive/OwnDispatchFilter`, 시연은 빼지 않아 차량 앱 한 대로 시연 가능). 송신 알림창 번호는 11·12번(수신은 1번). 계산 시험 120개. 차량 앱에 등록하려면 송신 화면에서 등록 코드를 넣는다(폰 앱과 저장소가 따로).
    - Virtual Console 창이 숨어 있으면 BRAKE 페달 값이 차로 가지 않는다. 'Emulation Controls'의 Brake Pedal 칸(input range)을 바꾸면 반영된다 (11/01).
-   - 다음: 제출 준비(11/15: 기획서, README, 시연 영상), 부팅 자동 시작 확인.
+   - 수신 마무리 2 완료 (2026-11-01): R-9 주행 중 화면 단순화(`VehicleState.isDriving` = CarUxRestrictions 주행 제한, 못 읽으면 기어·속도 / `screen/DrivingView` 그림 하나 + 한 줄, 주행 중 버튼·시험용 정보 숨김), R-17 양보 리포트 화면(`screen/ReportActivity`, 기록 = 날짜·시각·차종 한 줄씩 `report/YieldTally`). 계산 시험 129개. 주행 제한이 바뀌면 기록에 "주행 제한: 걸림/풀림".
+   - 다음: 제출판 정리(시험용 정보 숨기기, 정식판 서명 키), 제출 준비(11/15: 기획서, README, 시연 영상), 부팅 자동 시작 확인.
    - 시험으로 송신을 강제로 끊으면(timeout) end_dispatch가 안 불려 출동이 열린 채 남는다. 시험 뒤 그 출동 번호로 end_dispatch를 불러 정리한다.
 
 ## 코드 원칙

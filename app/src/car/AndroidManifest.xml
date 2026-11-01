@@ -73,6 +73,15 @@
                 android:value="true" />
         </activity>
 
+        <!-- 양보 리포트: 길을 열어준 기록과 누적 횟수 (R-17) -->
+        <activity
+            android:name=".screen.ReportActivity"
+            android:exported="false">
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+
         <!-- Pleos 송신 모드: 폰 앱과 같은 송신 화면·송신 서비스를 쓴다 (긴급차량에 단 차량용) -->
         <activity
             android:name=".sender.SenderActivity"

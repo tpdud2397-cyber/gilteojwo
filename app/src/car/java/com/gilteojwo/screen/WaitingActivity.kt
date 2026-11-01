@@ -31,16 +31,18 @@ import kotlin.math.roundToInt
  * 길터줘 화면 (사양서 '화면 목록'의 수신 화면). 알림 단계에 따라 보이는 내용이 바뀐다.
  * - 대기: 서버 연결, 주변 긴급차량 수, "알림이 없어도 사이렌에 주의하세요"
  * - 접근 알림(관심·경고): 내 차 기준 레이더, 방향, 거리, 도착 예상 시간
- * - 양보 안내(양보): 큰 그림 하나 + 한 줄 문구 (주행 중에는 이것만 보여준다), 행동 확인 표시
+ * - 양보 안내(양보): 큰 그림 하나 + 한 줄 문구, 행동 확인 표시
  * - 해제: "지나갔습니다" (3초 뒤 대기로). 양보했으면 "오늘 구급차 1대에 길을 열어줬습니다"(R-17)
+ * - 주행 중(R-9): 모든 단계를 큰 그림 하나 + 문구 한 줄로만 보여주고, 버튼·시험용 정보는 숨긴다
  * 계산과 알림(내비 위 카드·가장자리 빛·소리·조명)은 모두 수신 서비스(ReceiveService)가 뒤에서 한다.
  * 이 화면은 그 결과를 보여주기만 해서, 닫거나 내비로 넘어가도 알림은 계속 온다.
- * 맨 위 '설정' 버튼, 송신 모드가 켜져 있으면(등록된 긴급차량) '송신 화면' 버튼도 보인다.
+ * 맨 위 '설정'·'양보 리포트' 버튼, 송신 모드가 켜져 있으면(등록된 긴급차량) '송신 화면' 버튼도 보인다.
  */
 class WaitingActivity : Activity() {
     // 맨 위 상태 줄
     private lateinit var headerText: TextView
     private lateinit var problemText: TextView
+    private lateinit var buttonRow: LinearLayout // 설정·양보 리포트·송신 화면 (주행 중에는 숨김)
     private lateinit var sendScreenButton: Button // 송신 모드일 때만 보인다
 
     // 대기
@@ -94,45 +96,69 @@ class WaitingActivity : Activity() {
     }
 
     private fun render(s: ReceiveSnapshot) {
+        // R-9 주행 중이면 버튼·상태 줄·시험용 정보를 숨기고 알림은 그림 하나 + 문구 한 줄만
+        val driving = s.vehicleState.isDriving
         val overlay = if (Settings.canDrawOverlays(this)) "가장자리 빛: 허용됨" else "가장자리 빛: '다른 앱 위에 표시' 허용 필요"
         headerText.text = "길터줘 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)} · $overlay"
+        headerText.visibility = if (driving) View.GONE else View.VISIBLE
         problemText.text = s.problems.joinToString("\n")
+        buttonRow.visibility = if (driving) View.GONE else View.VISIBLE
         sendScreenButton.visibility = if (SenderStore(this).vehicle != null) View.VISIBLE else View.GONE
         sendScreenButton.text = if (SendService.latest.isDispatching) "송신 화면 · 긴급출동 중" else "송신 화면"
         debugText.text = debugLines(s)
+        debugText.visibility = if (driving) View.GONE else View.VISIBLE
 
         val target = s.alert.target
         if (s.alert.stage == AlertStage.NONE || target == null) {
-            showWait(s)
+            showWait(s, driving)
+        } else if (driving) {
+            showDrivingAlert(s)
         } else {
             showAlert(s, target)
         }
     }
 
-    /** 대기 화면 */
-    private fun showWait(s: ReceiveSnapshot) {
+    /** 대기 화면. 주행 중에는 제목과 주의 문구만 */
+    private fun showWait(s: ReceiveSnapshot, driving: Boolean) {
         waitPanel.visibility = View.VISIBLE
         alertPanel.visibility = View.GONE
         waitTitle.text = if (s.vehicleCount == 0) "주변에 출동 중인 긴급차량이 없습니다" else "출동 중 긴급차량 ${s.vehicleCount}대 · 다가오는 차 없음"
         serverText.text = "서버 연결: ${s.serverStatus}"
         val today = s.tally.todayCount(YieldReportStore.today())
         reportText.text = if (s.tally.total > 0) "지금까지 긴급차량 ${s.tally.total}대에 길을 열어줬습니다 (오늘 ${today}대)" else ""
+        serverText.visibility = if (driving) View.GONE else View.VISIBLE
+        reportText.visibility = if (driving) View.GONE else View.VISIBLE
     }
 
-    /** 접근 알림(관심·경고), 양보 안내(양보), 해제 화면 */
+    /** R-9 주행 중 알림: 큰 그림 하나 + 문구 한 줄 (DrivingView가 고른다) */
+    private fun showDrivingAlert(s: ReceiveSnapshot) {
+        val view = DrivingView.of(s.alert, s.advice) ?: return
+        waitPanel.visibility = View.GONE
+        alertPanel.visibility = View.VISIBLE
+        for (hidden in listOf(radar, stageText, directionText, distanceText, reportLineText)) hidden.visibility = View.GONE
+        val color = adviceColor(s.advice?.action, stageColor(s.alert.stage))
+        iconText.visibility = View.VISIBLE
+        iconText.text = view.icon
+        iconText.setTextColor(color)
+        adviceText.visibility = View.VISIBLE
+        adviceText.text = view.line
+        adviceText.setTextColor(color)
+    }
+
+    /** 서 있을 때: 접근 알림(관심·경고)은 레이더와 자세한 정보, 양보 안내(양보)·해제는 큰 그림 하나 + 한 줄 문구 */
     private fun showAlert(s: ReceiveSnapshot, target: ApproachInfo) {
         waitPanel.visibility = View.GONE
         alertPanel.visibility = View.VISIBLE
         val stage = s.alert.stage
         val color = stageColor(stage)
 
+        stageText.visibility = View.VISIBLE
         stageText.text = "${target.vehicle.type.koreanName} 접근 · ${stage.koreanName}"
         stageText.setTextColor(color)
         directionText.text = "${target.direction.koreanName}(${target.direction.clock})"
         distanceText.text = listOfNotNull("${target.distanceMeters.roundToInt()}m", target.arrivalText).joinToString(" · ")
         radar.show(target, color)
 
-        // 양보·해제는 큰 그림 하나 + 한 줄 문구만 (주행 중에는 단순하게)
         val advice = s.advice
         val simple = stage == AlertStage.YIELD || stage == AlertStage.CLEARED
         radar.visibility = if (simple) View.GONE else View.VISIBLE
@@ -141,12 +167,8 @@ class WaitingActivity : Activity() {
         iconText.visibility = if (simple && advice != null) View.VISIBLE else View.GONE
         adviceText.visibility = if (advice != null) View.VISIBLE else View.GONE
         if (advice != null) {
-            iconText.text = iconFor(advice.action)
-            val adviceColor = when (advice.action) {
-                YieldAction.CONFIRMED, YieldAction.PASSED -> GREEN
-                YieldAction.SIGNAL_LOST -> ORANGE
-                else -> color
-            }
+            val adviceColor = adviceColor(advice.action, color)
+            iconText.text = advice.action.icon
             iconText.setTextColor(adviceColor)
             adviceText.text = advice.text
             adviceText.setTextColor(adviceColor)
@@ -155,13 +177,11 @@ class WaitingActivity : Activity() {
         reportLineText.visibility = if (s.reportLine != null) View.VISIBLE else View.GONE
     }
 
-    /** 양보 안내 종류마다 크게 보여줄 그림 (글자 기호) */
-    private fun iconFor(action: YieldAction): String = when (action) {
-        YieldAction.MOVE_RIGHT -> "→" // 오른쪽으로
-        YieldAction.SLOW_DOWN -> "↘" // 속도를 줄이며 비키기
-        YieldAction.STOP_BEFORE_CROSSING -> "✋" // 진입 금지
-        YieldAction.CONFIRMED, YieldAction.PASSED -> "✓"
-        YieldAction.SIGNAL_LOST -> "⚠" // 정보가 끊김: 사이렌에 주의
+    /** 확인·통과는 초록, 정보 끊김은 주황, 나머지는 단계 색 */
+    private fun adviceColor(action: YieldAction?, stageColor: Int): Int = when (action) {
+        YieldAction.CONFIRMED, YieldAction.PASSED -> GREEN
+        YieldAction.SIGNAL_LOST -> ORANGE
+        else -> stageColor
     }
 
     private fun stageColor(stage: AlertStage): Int = when (stage) {
@@ -200,14 +220,15 @@ class WaitingActivity : Activity() {
         problemText = addText(root, 18f)
         problemText.setTextColor(RED)
 
-        // 맨 위 버튼 줄: 설정, (송신 모드면) 송신 화면
-        val buttons = LinearLayout(this)
-        buttons.orientation = LinearLayout.HORIZONTAL
-        addButton(buttons, "설정", Color.parseColor("#424242")) { startActivity(Intent(this, SettingsActivity::class.java)) }
-        sendScreenButton = addButton(buttons, "송신 화면", Color.parseColor("#D32F2F")) {
+        // 맨 위 버튼 줄: 설정, 양보 리포트, (송신 모드면) 송신 화면. 주행 중에는 숨긴다
+        buttonRow = LinearLayout(this)
+        buttonRow.orientation = LinearLayout.HORIZONTAL
+        addButton(buttonRow, "설정", Color.parseColor("#424242")) { startActivity(Intent(this, SettingsActivity::class.java)) }
+        addButton(buttonRow, "양보 리포트", Color.parseColor("#2E7D32")) { startActivity(Intent(this, ReportActivity::class.java)) }
+        sendScreenButton = addButton(buttonRow, "송신 화면", Color.parseColor("#D32F2F")) {
             startActivity(Intent(this, SenderActivity::class.java))
         }
-        root.addView(buttons)
+        root.addView(buttonRow)
 
         // 대기
         waitPanel = LinearLayout(this)

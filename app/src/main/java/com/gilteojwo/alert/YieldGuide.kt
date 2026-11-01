@@ -7,13 +7,13 @@ import com.gilteojwo.vehiclestate.TurnSignal
 import com.gilteojwo.vehiclestate.VehicleState
 
 /** 양보 안내의 종류. 화면에 크게 보여줄 그림 하나를 고르는 데 쓴다 (사양서: 큰 아이콘 1개 + 한 줄 문구) */
-enum class YieldAction {
-    MOVE_RIGHT, // 우측으로 비켜주세요
-    SLOW_DOWN, // 속도를 줄이고 진로를 비켜주세요
-    STOP_BEFORE_CROSSING, // 녹색 신호여도 교차로에 진입하지 마세요
-    CONFIRMED, // 확인했습니다 (양보 행동을 함)
-    PASSED, // 지나갔습니다
-    SIGNAL_LOST, // 긴급차량 정보가 끊김 (지나갔는지 모름)
+enum class YieldAction(val icon: String) {
+    MOVE_RIGHT("→"), // 우측으로 비켜주세요
+    SLOW_DOWN("↘"), // 속도를 줄이고 진로를 비켜주세요
+    STOP_BEFORE_CROSSING("✋"), // 녹색 신호여도 교차로에 진입하지 마세요
+    CONFIRMED("✓"), // 확인했습니다 (양보 행동을 함)
+    PASSED("✓"), // 지나갔습니다
+    SIGNAL_LOST("⚠"), // 긴급차량 정보가 끊김 (지나갔는지 모름): 사이렌에 주의
 }
 
 /** 양보 안내 한 줄과 그 종류. isConfirmed = 운전자가 양보 행동(우측 방향지시등)을 해서 반복 안내를 멈출 때 */

@@ -13,6 +13,20 @@ class VehicleStateTest {
     }
 
     @Test
+    fun `차가 주행 제한을 걸면 주행 중, 풀면 서 있음 (R-9)`() {
+        // 에뮬레이터: 기어가 P를 벗어나면 주행 제한이 걸린다 (11/01 시험)
+        assertEquals(true, VehicleState(gear = Gear.D, drivingRestricted = true).isDriving)
+        assertEquals(false, VehicleState(gear = Gear.P, drivingRestricted = false).isDriving)
+    }
+
+    @Test
+    fun `주행 제한을 못 읽으면 기어 D·R이거나 움직이면 주행 중`() {
+        assertEquals(true, VehicleState(gear = Gear.D).isDriving)
+        assertEquals(true, VehicleState(speedKmh = 12.0).isDriving)
+        assertEquals(false, VehicleState(gear = Gear.P, speedKmh = 0.0).isDriving)
+    }
+
+    @Test
     fun `모르는 기어 값은 확인 중으로 둔다`() {
         assertEquals(Gear.UNKNOWN, Gear.fromAndroid(null))
         assertEquals(Gear.UNKNOWN, Gear.fromAndroid(16))
