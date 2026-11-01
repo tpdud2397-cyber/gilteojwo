@@ -139,12 +139,12 @@ class ReceiveService : Service() {
             target?.vehicle?.dispatchId?.let { yieldAckSender.send(it, status, position.point) }
             if (status == YieldStatus.YIELDED && target != null) {
                 tally = reportStore.addYield()
-                yieldedVehicleId = target.vehicle.id
+                yieldedVehicleId = target.vehicle.dispatchId ?: target.vehicle.id // 출동마다 구분
             }
         }
         // 해제 때 양보했던 차였으면 "오늘 구급차 1대에 길을 열어줬습니다"를 카드에 덧붙인다
         val target = alert.target
-        val reportLine = if (alert.stage == AlertStage.CLEARED && target != null && target.vehicle.id == yieldedVehicleId) {
+        val reportLine = if (alert.stage == AlertStage.CLEARED && target != null && (target.vehicle.dispatchId ?: target.vehicle.id) == yieldedVehicleId) {
             tally.message(YieldReportStore.today(), target.vehicle.type.koreanName)
         } else {
             null

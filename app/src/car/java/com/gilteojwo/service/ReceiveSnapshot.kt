@@ -20,6 +20,6 @@ data class ReceiveSnapshot(
     val advice: YieldAdvice? = null, // 양보 안내 문구 (양보·해제 단계)
     val problems: List<String> = emptyList(), // 시작하다 실패한 것 (화면에 보여준다)
     val tally: YieldTally = YieldTally(), // 길을 열어준 횟수 (R-17)
-    val yieldedVehicleId: String? = null, // 이번에 양보한 긴급차량 (해제 화면에 리포트를 띄울지)
+    val yieldedVehicleId: String? = null, // 이번에 양보한 출동 (출동 번호, 없으면 차량 ID. 해제 화면에 리포트를 띄울지)
     val reportLine: String? = null, // 해제 때 보여줄 "오늘 구급차 1대에 길을 열어줬습니다"
 )

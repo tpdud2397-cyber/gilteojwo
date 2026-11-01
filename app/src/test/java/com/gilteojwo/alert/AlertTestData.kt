@@ -12,10 +12,11 @@ fun alertOf(
     direction: RelativeDirection = RelativeDirection.REAR,
     meters: Double = 300.0,
     approaching: Boolean = true,
+    dispatchId: String = "출동1",
 ) = AlertState(
     stage,
     ApproachInfo(
-        vehicle = EmergencyVehicle("구급차1", VehicleType.AMBULANCE, CITY_HALL, 0.0, 60.0, 0),
+        vehicle = EmergencyVehicle("구급차1", VehicleType.AMBULANCE, CITY_HALL, 0.0, 60.0, 0, dispatchId = dispatchId),
         distanceMeters = meters,
         direction = direction,
         arrivalSeconds = if (approaching) (meters / 16.7).toInt() else null,

@@ -34,6 +34,11 @@ class SenderStore(context: Context) {
         get() = prefs.getLong("dispatch_started", 0L)
         set(value) = prefs.edit().putLong("dispatch_started", value).apply()
 
+    /** 출동을 시작했거나 마지막으로 "출동 중"을 누른 시각 (S-7 출동 확인 기준) */
+    var lastConfirmedMillis: Long
+        get() = prefs.getLong("last_confirmed", 0L)
+        set(value) = prefs.edit().putLong("last_confirmed", value).apply()
+
     /** 등록 해제: 코드와 차량 정보를 지운다 */
     fun clearRegistration() {
         prefs.edit().clear().apply()

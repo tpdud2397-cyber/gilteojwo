@@ -16,11 +16,11 @@ enum class YieldStatus(val code: String) {
  * - 알림 중 아래 중 하나면 "양보함"을 한 번 보낸다
  *   ① 우측 방향지시등 ② 알림이 시작될 때보다 시속 15km 넘게 감속 ③ 서서(시속 1km 미만) 브레이크를 밟음 (주차 P는 제외)
  * - 알림이 아니면(알림 없음·해제) 아무것도 보내지 않는다
- * 긴급차량(출동)마다 한 번씩만 보낸다. 기준값은 제안값이다.
+ * 출동마다 한 번씩만 보낸다 (같은 구급차라도 새 출동이면 다시 보낸다). 기준값은 제안값이다.
  */
 class YieldDetector {
-    private var notifiedVehicleId: String? = null
-    private var yieldedVehicleId: String? = null
+    private var notifiedKey: String? = null // 알림 받음을 보낸 출동
+    private var yieldedKey: String? = null // 양보함을 보낸 출동
     private var speedAtStartKmh: Double? = null
 
     /** 계산 결과가 새로 나올 때마다 부른다. 서버에 보낼 것이 있으면 그 상태, 없으면 null */
@@ -31,14 +31,15 @@ class YieldDetector {
             alert.stage == AlertStage.YIELD
         if (!isAlerting) return null
 
-        val vehicleId = target.vehicle.id
-        if (vehicleId != notifiedVehicleId) {
-            notifiedVehicleId = vehicleId
+        // 출동 번호로 구분한다. 출동 번호를 모르면 차량 ID로
+        val key = target.vehicle.dispatchId ?: target.vehicle.id
+        if (key != notifiedKey) {
+            notifiedKey = key
             speedAtStartKmh = car.speedKmh
             return YieldStatus.NOTIFIED
         }
-        if (vehicleId != yieldedVehicleId && hasYielded(car)) {
-            yieldedVehicleId = vehicleId
+        if (key != yieldedKey && hasYielded(car)) {
+            yieldedKey = key
             return YieldStatus.YIELDED
         }
         return null

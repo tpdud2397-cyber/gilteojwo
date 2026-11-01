@@ -52,6 +52,16 @@ class YieldDetectorTest {
     }
 
     @Test
+    fun `같은 구급차라도 새 출동이면 다시 알림 받음과 양보함을 보낸다`() {
+        val signaling = driving50.copy(turnSignal = TurnSignal.RIGHT)
+        detector.update(alertOf(AlertStage.WARNING, dispatchId = "출동1"), driving50)
+        detector.update(alertOf(AlertStage.YIELD, dispatchId = "출동1"), signaling)
+
+        assertEquals(YieldStatus.NOTIFIED, detector.update(alertOf(AlertStage.WARNING, dispatchId = "출동2"), driving50))
+        assertEquals(YieldStatus.YIELDED, detector.update(alertOf(AlertStage.YIELD, dispatchId = "출동2"), signaling))
+    }
+
+    @Test
     fun `알림이 아닐 때는 아무것도 보내지 않는다`() {
         val signaling = driving50.copy(turnSignal = TurnSignal.RIGHT)
 
