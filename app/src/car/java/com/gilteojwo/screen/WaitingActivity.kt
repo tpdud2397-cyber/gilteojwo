@@ -8,6 +8,10 @@ import android.util.Log
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.gilteojwo.BuildInfo
+import com.gilteojwo.alert.AlertStage
+import com.gilteojwo.alert.AlertStageJudge
+import com.gilteojwo.alert.AlertState
+import com.gilteojwo.alert.YieldGuide
 import com.gilteojwo.approach.ApproachInfo
 import com.gilteojwo.approach.ApproachTracker
 import com.gilteojwo.mylocation.MyLocationTracker
@@ -26,6 +30,7 @@ import kotlin.math.roundToInt
  * 수신 대기 화면 (길터줘를 켜면 처음 보이는 화면).
  * 내 위치(R-1)와 주변 긴급차량 목록(R-2)을 받아, 차마다 거리·방향·도착 시간·접근 여부(R-3·R-4)를 보여준다.
  * 내 차 상태(R-5~R-8: 속도·기어·브레이크·방향지시등)도 한 줄로 보여준다.
+ * 알림 단계(관심·경고·양보·해제)와 양보 안내 문구도 글자로 보여준다 (알림 화면·소리·조명은 다음 묶음).
  * 지금은 확인용으로 숫자를 그대로 보여주고, 알림 화면·소리·조명은 다음 단계에서 붙인다.
  */
 class WaitingActivity : Activity() {
@@ -33,17 +38,20 @@ class WaitingActivity : Activity() {
     private lateinit var vehicleReceiver: EmergencyVehicleReceiver
     private lateinit var vehicleStateReader: VehicleStateReader
     private val approachTracker = ApproachTracker()
+    private val alertJudge = AlertStageJudge()
 
     private var myPosition: MyPosition? = null
     private var vehicles: List<EmergencyVehicle> = emptyList() // 서버에서 받은 출동 중 긴급차량
     private var serverStatus = "연결 준비"
     private var results: List<ApproachInfo> = emptyList() // 차마다 거리·방향·도착 시간·접근 여부
     private var vehicleState = VehicleState() // 내 차 속도·기어·브레이크·방향지시등
+    private var alertState = AlertState(AlertStage.NONE, null) // 지금 알림 단계와 알리는 긴급차량
 
     private lateinit var headerText: TextView
     private lateinit var serverText: TextView
     private lateinit var myLocationText: TextView
     private lateinit var vehicleStateText: TextView
+    private lateinit var alertText: TextView
     private lateinit var vehiclesText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,11 +101,12 @@ class WaitingActivity : Activity() {
     private fun onMyPositionChanged(position: MyPosition) {
         myPosition = position
         results = approachTracker.update(position, vehicles)
+        alertState = alertJudge.update(results, position.timeMillis)
         // 집 PC에서 `adb logcat -s Gilteojwo`로 계산 결과를 시간순으로 볼 수 있다
         Log.i(
             LOG_TAG,
             "계산: 긴급차량 ${results.size}대 " + results.joinToString(" / ") { describe(it) } +
-                " | 내 차: ${vehicleState.describe()}",
+                " | 내 차: ${vehicleState.describe()} | 알림: ${alertLine()}",
         )
         refresh()
     }
@@ -133,17 +142,40 @@ class WaitingActivity : Activity() {
 
         vehiclesText.text = "주변 긴급차량: ${results.size}대" +
             results.joinToString("") { "\n· " + describe(it) }
+
+        alertText.text = "알림: ${alertLine()}"
+        alertText.setTextColor(
+            when (alertState.stage) {
+                AlertStage.ATTENTION -> Color.parseColor("#FF9800") // 주황
+                AlertStage.WARNING, AlertStage.YIELD -> Color.parseColor("#F44336") // 빨강
+                AlertStage.CLEARED -> Color.parseColor("#4CAF50") // 초록
+                AlertStage.NONE -> Color.GRAY
+            },
+        )
     }
 
-    /** 예: "구급차 · 후방 · 480m · 약 24초 · 접근 중" */
+    /** 예: "양보 · 구급차 후방(6시) 150m · 약 9초 · 우측으로 비켜주세요" */
+    private fun alertLine(): String {
+        val target = alertState.target ?: return alertState.stage.koreanName
+        val advice = YieldGuide.choose(alertState, myPosition?.headingDegrees ?: 0.0, vehicleState)
+        return listOfNotNull(
+            alertState.stage.koreanName,
+            "${target.vehicle.type.koreanName} ${target.direction.koreanName}(${target.direction.clock}) " +
+                "${target.distanceMeters.roundToInt()}m",
+            target.arrivalText,
+            advice?.text,
+        ).joinToString(" · ")
+    }
+
+    /** 예: "구급차 · 후방(6시) · 480m · 약 24초 · 접근 중" */
     private fun describe(info: ApproachInfo): String {
         val arrival = info.arrivalText ?: "도착 시간 없음"
         val state = if (info.isApproaching) "접근 중" else "접근 아님"
-        return "${info.vehicle.type.koreanName} · ${info.direction.koreanName} · " +
+        return "${info.vehicle.type.koreanName} · ${info.direction.koreanName}(${info.direction.clock}) · " +
             "${info.distanceMeters.roundToInt()}m · $arrival · $state"
     }
 
-    /** 화면을 위에서 아래로 쌓는다: 상태 줄 → 서버 → 내 위치 → 내 차 상태 → 긴급차량 목록 → 주의 문구 */
+    /** 화면을 위에서 아래로 쌓는다: 상태 줄 → 서버 → 내 위치 → 내 차 상태 → 긴급차량 목록 → 알림 → 주의 문구 */
     private fun buildScreen() {
         val root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
@@ -154,6 +186,8 @@ class WaitingActivity : Activity() {
         myLocationText = addText(root, 26f)
         vehicleStateText = addText(root, 26f)
         vehiclesText = addText(root, 30f)
+        alertText = addText(root, 34f)
+        alertText.setTypeface(null, Typeface.BOLD)
 
         // 모든 긴급차량이 송신하는 것은 아니라서 이 문구는 항상 보인다 (사양서 '알림 단계와 양보 안내')
         val caution = addText(root, 30f)
