@@ -1,4 +1,4 @@
-package com.gilteojwo.sdktest
+package com.gilteojwo.permission
 
 import android.Manifest
 import android.app.Activity

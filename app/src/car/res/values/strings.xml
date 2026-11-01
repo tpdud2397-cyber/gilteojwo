@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 차량용에만 있는 SDK 시험 화면의 이름 -->
+    <string name="test_app_name">길터줘 시험</string>
+</resources>

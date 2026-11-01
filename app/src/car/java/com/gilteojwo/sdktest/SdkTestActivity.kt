@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.gilteojwo.BuildInfo
+import com.gilteojwo.permission.PermissionHelper
 
 /**
  * 차량용 시험 화면.

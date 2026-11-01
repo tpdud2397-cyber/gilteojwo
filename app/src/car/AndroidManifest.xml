@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 차량용(Pleos) 설정: 권한 선언과 시험 화면 -->
+<!-- 차량용(Pleos) 설정: 권한 선언, 본 화면, 시험 화면 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Pleos SDK 권한 (개발 중에는 선언만 하면 쓸 수 있다) -->
@@ -33,9 +33,25 @@
             android:name="android.car"
             android:required="false" />
 
+        <!-- 길터줘 본 화면 (수신 대기). 앱 목록에 "길터줘"로 보인다 -->
+        <activity
+            android:name=".screen.WaitingActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
+        </activity>
+
+        <!-- SDK 시험 화면. 앱 목록에 "길터줘 시험"으로 따로 보인다 -->
         <activity
             android:name=".sdktest.SdkTestActivity"
             android:exported="true"
+            android:label="@string/test_app_name"
             android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

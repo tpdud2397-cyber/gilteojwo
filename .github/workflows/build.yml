@@ -35,8 +35,9 @@ jobs:
       - name: Gradle 준비
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 폰용·차량용 APK 만들기
-        run: ./gradlew assemblePhoneDebug assembleCarDebug --stacktrace
+      # 계산 시험(app/src/test)이 하나라도 실패하면 APK를 만들지 않는다
+      - name: 계산 시험 + 폰용·차량용 APK 만들기
+        run: ./gradlew testCarDebugUnitTest testPhoneDebugUnitTest assemblePhoneDebug assembleCarDebug --stacktrace
 
       - name: 파일 이름 정리 (뒤에 _R번호)
         run: |

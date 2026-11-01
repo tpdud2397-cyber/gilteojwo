@@ -47,7 +47,8 @@
 
 - Windows 11, AMD Ryzen 7 5800X, RAM 32GB, RTX 5070. BIOS에서 SVM(가상화)을 켰고, Windows 하이퍼바이저 플랫폼도 켰다.
 - Android Studio Rabbit 2 (2026.2.2). SDK 위치: `C:\Users\bsy92\AppData\Local\Android\Sdk`
-- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 `C:\Users\bsy92\.jdks\temurin-17`에 받아 두었다 (2026-11-01). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 집 PC 빌드는 화면에 R1(커밋 local)로 나오고 Releases 판보다 번호가 낮아서 `adb install -r -d`로 덮어 설치한다.
+- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 `C:\Users\bsy92\.jdks\temurin-17`에 받아 두었다 (2026-11-01). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 집 PC 빌드는 화면에 "PC 빌드 (11/01 11:51)"처럼 만든 시각으로 나오고(버전 번호 1), Releases 판보다 번호가 낮아서 `adb install -r -d`로 덮어 설치한다. 계산 시험은 `./gradlew testCarDebugUnitTest`.
+- Git Bash에서 `adb shell` 뒤에 `/sdcard/...` 같은 경로를 쓰면 윈도우 경로로 바뀌어 버린다. 명령 앞에 `MSYS_NO_PATHCONV=1`을 둔다.
 - 에뮬레이터: Pleos Connect v2.1.0 APIs (API 34, x86_64). AVD 이름은 `Pleos_Connect_v2.1.0`, 포트 5554. 권장 설정은 RAM 4GB, Cold boot.
 - Virtual Console: 에뮬레이터를 켠 뒤 `adb forward tcp:8088 tcp:8088`을 실행하고, 브라우저에서 http://127.0.0.1:8088/ 을 연다. 사용자가 바탕화면 바로가기로 만들어 뒀을 수 있다. 필요하면 Claude Code가 직접 실행한다.
 - 시연용 노트북은 LG 그램 15ZD980 (i5-8250U, RAM 8GB, 여유 공간 약 46GB)이다. 에뮬레이터를 직접 돌리기엔 버겁다. 대안은 크롬 원격 데스크톱으로 이 PC 화면을 띄우는 것이고, 시연 녹화 영상도 백업으로 준비한다.
@@ -97,6 +98,7 @@
    - 진행 상황 (2026-11-01): 시험 앱 완성, 1차(10/31)·2차(11/01) 시험 완료. 코드는 `app/src/car/java/com/gilteojwo/sdktest/`, 결과와 남은 시험은 `docs/시험결과.md`.
 2. 결과를 `docs/시험결과.md`에 적고 사용자에게 요약한다.
 3. 그다음 본 개발을 한다. 수신은 R-1~R-4 → R-6·R-7·R-12 → R-10·R-15·R-16 → R-11·R-13·R-14·R-17 순서, 송신은 S-1~S-8.
+   - 진행 상황 (2026-11-01): R-1(내 위치), R-3(거리·방향·도착 시간), R-4(접근 판정)와 대기 화면 완료. 계산 시험 22개. R-2(서버 수신)는 사용자가 Supabase 프로젝트를 만들고 주소·anon 키를 주면 진행한다. 구조는 `docs/설명노트.md`.
 
 ## 코드 원칙
 
