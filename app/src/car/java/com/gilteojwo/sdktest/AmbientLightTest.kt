@@ -3,6 +3,7 @@ package com.gilteojwo.sdktest
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
 import ai.pleos.playground.vehicle.api.model.capability.AreaBounds
+import ai.pleos.playground.vehicle.constant.area.SeatValue
 import ai.pleos.playground.vehicle.constant.control.LightSwitch
 
 /**
@@ -11,12 +12,18 @@ import ai.pleos.playground.vehicle.constant.control.LightSwitch
  *    조회하면서 지금 값을 저장해 둔다 (원래대로 버튼용).
  * 2) 버튼으로 켜기·끄기·색·밝기를 바꾸고, Virtual Console에서 실제로 바뀌는지 본다.
  * 3) 원래대로: 저장해 둔 값으로 되돌린다.
+ * 4) 강제 구역 시험 (11/01): 차가 알려 주지 않은 한 좌석 구역(1열 왼쪽 등)에만 색을 보내 본다. 구역별 조명이 되는지 확인용.
  * 색은 32비트 ARGB 숫자로 보낸다 (예: 빨강 0xFFFF0000).
  */
 class AmbientLightTest(private val vehicle: Vehicle, private val card: TestCard) : SdkTest {
     private val red = 0xFFFF0000.toInt()
     private val orange = 0xFFFF8000.toInt()
     private val white = 0xFFFFFFFF.toInt()
+    private val blue = 0xFF0000FF.toInt()
+
+    // 강제 시험에 쓸 한 좌석 구역
+    private val frontLeft = SeatArea(SeatValue.ROW_1_LEFT)
+    private val rearRight = SeatArea(SeatValue.ROW_2_RIGHT)
 
     // 조회 결과: 기능별로 지원하는 구역
     private var switchAreas: List<SeatArea> = emptyList()
@@ -37,7 +44,11 @@ class AmbientLightTest(private val vehicle: Vehicle, private val card: TestCard)
         card.addButtons("켜기" to { setSwitch(LightSwitch.ON) }, "끄기" to { setSwitch(LightSwitch.OFF) })
         card.addButtons("빨강" to { setColor(red, "빨강") }, "주황" to { setColor(orange, "주황") }, "흰색" to { setColor(white, "흰색") })
         card.addButtons("왼쪽만 빨강" to ::setLeftOnlyRed, "밝기 최대" to { setBrightness(toMax = true) }, "밝기 최소" to { setBrightness(toMax = false) })
-        card.addButtons("원래대로" to ::restore)
+        card.addButtons(
+            "1열 왼쪽만 빨강 (강제)" to { sendColor(frontLeft, red, "빨강") },
+            "2열 오른쪽만 파랑 (강제)" to { sendColor(rearRight, blue, "파랑") },
+        )
+        card.addButtons("구역별 색 읽기" to ::readColorsByArea, "원래대로" to ::restore)
     }
 
     override fun start() = checkCapabilities()
@@ -128,6 +139,18 @@ class AmbientLightTest(private val vehicle: Vehicle, private val card: TestCard)
                 area, value,
                 onComplete = { a, v -> report("${areaName(a)} 밝기 → $v 성공") },
                 onFailed = { e -> report("${areaName(area)} 밝기 → $value 실패 (${e.message})") },
+            )
+        }
+    }
+
+    /** 묶음 구역과 한 좌석 구역(1열 왼쪽, 2열 오른쪽)마다 지금 색을 읽어 본다. 구역별로 다른 색이 저장되는지 확인 */
+    private fun readColorsByArea() {
+        val areas = colorAreas + listOf(frontLeft, rearRight)
+        areas.forEach { area ->
+            vehicle.getLight().getAmbientLightBrightnessColor(
+                area,
+                onComplete = { v -> report("${areaName(area)} 지금 색: ${if (v == null) "값 없음" else colorHex(v)}") },
+                onFailed = { e -> report("${areaName(area)} 색 읽기 실패 (${e.message})") },
             )
         }
     }
