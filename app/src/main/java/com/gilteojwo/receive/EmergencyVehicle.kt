@@ -2,11 +2,16 @@ package com.gilteojwo.receive
 
 import com.gilteojwo.geo.GeoPoint
 
-/** 긴급차량 종류 */
-enum class VehicleType(val koreanName: String) {
-    AMBULANCE("구급차"),
-    FIRE_TRUCK("소방차"),
-    POLICE("경찰차"),
+/** 긴급차량 종류. code는 서버 표에 적힌 이름이다. */
+enum class VehicleType(val code: String, val koreanName: String) {
+    AMBULANCE("ambulance", "구급차"),
+    FIRE_TRUCK("fire_truck", "소방차"),
+    POLICE("police", "경찰차");
+
+    companion object {
+        /** 서버 이름으로 종류를 찾는다. 모르는 이름이면 null */
+        fun fromCode(code: String): VehicleType? = entries.find { it.code == code }
+    }
 }
 
 /** 서버에서 받은 긴급차량 하나의 현재 상태 (서버 표 positions_live의 한 줄) */
@@ -16,5 +21,5 @@ data class EmergencyVehicle(
     val point: GeoPoint,
     val headingDegrees: Double, // 긴급차량의 진행 방향 (0° = 북쪽)
     val speedKmh: Double,
-    val updatedMillis: Long, // 서버에 마지막으로 올라온 시각
+    val updatedMillis: Long, // 이 앱이 마지막으로 받은 시각. 10초 넘게 새 소식이 없으면 목록에서 뺀다
 )

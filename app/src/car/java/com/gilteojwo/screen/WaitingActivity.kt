@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.util.Log
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.gilteojwo.BuildInfo
@@ -13,6 +14,7 @@ import com.gilteojwo.mylocation.MyLocationTracker
 import com.gilteojwo.mylocation.MyPosition
 import com.gilteojwo.permission.PermissionHelper
 import com.gilteojwo.receive.EmergencyVehicle
+import com.gilteojwo.receive.EmergencyVehicleReceiver
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -22,14 +24,16 @@ import kotlin.math.roundToInt
  * 수신 대기 화면 (길터줘를 켜면 처음 보이는 화면).
  * 내 위치(R-1)와 주변 긴급차량 목록(R-2)을 받아, 차마다 거리·방향·도착 시간·접근 여부(R-3·R-4)를 보여준다.
  * 지금은 확인용으로 숫자를 그대로 보여주고, 알림 화면·소리·조명은 다음 단계에서 붙인다.
- * 서버(R-2)는 Supabase 프로젝트가 준비되면 연결한다. 그 전까지 긴급차량 목록은 비어 있다.
  */
 class WaitingActivity : Activity() {
     private lateinit var locationTracker: MyLocationTracker
+    private lateinit var vehicleReceiver: EmergencyVehicleReceiver
     private val approachTracker = ApproachTracker()
 
     private var myPosition: MyPosition? = null
-    private var vehicles: List<EmergencyVehicle> = emptyList() // R-2에서 서버 목록으로 채운다
+    private var vehicles: List<EmergencyVehicle> = emptyList() // 서버에서 받은 출동 중 긴급차량
+    private var serverStatus = "연결 준비"
+    private var results: List<ApproachInfo> = emptyList() // 차마다 거리·방향·도착 시간·접근 여부
 
     private lateinit var headerText: TextView
     private lateinit var serverText: TextView
@@ -40,6 +44,7 @@ class WaitingActivity : Activity() {
         super.onCreate(savedInstanceState)
         buildScreen()
         locationTracker = MyLocationTracker(this) { position -> onMyPositionChanged(position) }
+        vehicleReceiver = EmergencyVehicleReceiver { list, status -> onVehiclesChanged(list, status) }
 
         // 권한이 다 있으면 바로 시작하고, 없으면 먼저 허락을 받는다
         if (PermissionHelper.missing(this).isEmpty()) {
@@ -56,6 +61,7 @@ class WaitingActivity : Activity() {
 
     override fun onDestroy() {
         locationTracker.stop()
+        vehicleReceiver.stop()
         super.onDestroy()
     }
 
@@ -65,18 +71,29 @@ class WaitingActivity : Activity() {
         } catch (e: Exception) {
             myLocationText.text = "내 위치: 시작 실패 (${e.message})"
         }
+        vehicleReceiver.start()
         refresh()
     }
 
-    /** 내 위치가 새로 올 때마다(약 1초) 계산을 다시 하고 화면을 고친다 */
+    /** 내 위치가 새로 올 때마다(약 1초) 거리·방향·도착 시간·접근 여부를 다시 계산한다 */
     private fun onMyPositionChanged(position: MyPosition) {
         myPosition = position
+        results = approachTracker.update(position, vehicles)
+        // 집 PC에서 `adb logcat -s Gilteojwo`로 계산 결과를 시간순으로 볼 수 있다
+        Log.i(LOG_TAG, "계산: 긴급차량 ${results.size}대 " + results.joinToString(" / ") { describe(it) })
+        refresh()
+    }
+
+    /** 서버 목록이 바뀌면 기억만 해 두고, 계산은 다음 내 위치가 올 때(1초 안) 한다 */
+    private fun onVehiclesChanged(list: List<EmergencyVehicle>, status: String) {
+        vehicles = list
+        serverStatus = status
         refresh()
     }
 
     private fun refresh() {
         headerText.text = "길터줘 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)}"
-        serverText.text = "서버 연결: 준비 전 (Supabase 프로젝트를 만들면 연결합니다)"
+        serverText.text = "서버 연결: $serverStatus · 출동 중 긴급차량 ${vehicles.size}대"
 
         val my = myPosition
         if (my == null) {
@@ -89,7 +106,6 @@ class WaitingActivity : Activity() {
                 my.point.latitude, my.point.longitude, my.headingDegrees, timeText(my.timeMillis)
             )
 
-        val results = approachTracker.update(my, vehicles)
         vehiclesText.text = "주변 긴급차량: ${results.size}대" +
             results.joinToString("") { "\n· " + describe(it) }
     }
@@ -131,4 +147,8 @@ class WaitingActivity : Activity() {
     }
 
     private fun timeText(millis: Long): String = SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date(millis))
+
+    companion object {
+        const val LOG_TAG = "Gilteojwo"
+    }
 }

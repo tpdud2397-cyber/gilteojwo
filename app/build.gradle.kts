@@ -75,6 +75,9 @@ dependencies {
     "carImplementation"("ai.pleos.playground:FusedLocation:1.1.3")
     "carImplementation"("ai.pleos.playground:TextToSpeech:3.3.1")
 
+    // 서버(Supabase)와 웹소켓으로 실시간 연결하는 도구 (차량용 수신)
+    "carImplementation"("com.squareup.okhttp3:okhttp:4.12.0")
+
     // 계산이 맞는지 PC에서 자동으로 확인하는 시험 도구 (app/src/test)
     testImplementation("junit:junit:4.13.2")
 }
