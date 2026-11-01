@@ -13,6 +13,7 @@ import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.time.OffsetDateTime
 
 /**
  * R-2 긴급차량 수신: 서버(Supabase)의 '긴급차량 현재 위치' 표를 실시간으로 받는다.
@@ -150,19 +151,25 @@ class EmergencyVehicleReceiver(
         mainThread.postDelayed({ if (running) connect() }, 3000)
     }
 
-    /** 서버 표 한 줄을 EmergencyVehicle로 바꿔 목록에 넣는다. 받은 시각을 기록한다 */
+    /** 서버 표 한 줄을 EmergencyVehicle로 바꿔 목록에 넣는다. 받은 시각과 서버에 기록된 시각을 함께 남긴다 */
     private fun put(row: JSONObject) {
         val type = VehicleType.fromCode(row.optString("vehicle_type")) ?: return
+        val now = System.currentTimeMillis()
         val vehicle = EmergencyVehicle(
             id = row.getString("vehicle_id"),
             type = type,
             point = GeoPoint(row.getDouble("latitude"), row.getDouble("longitude")),
             headingDegrees = row.optDouble("heading", 0.0),
             speedKmh = row.optDouble("speed_kmh", 0.0),
-            updatedMillis = System.currentTimeMillis(),
+            updatedMillis = now,
+            recordedMillis = serverTimeMillis(row.optString("updated_at")) ?: now,
         )
         vehicles[vehicle.id] = vehicle
     }
+
+    /** 서버 시각 글자(예: 2026-11-01T04:12:01.131961+00:00)를 밀리초 숫자로. 읽을 수 없으면 null */
+    private fun serverTimeMillis(text: String): Long? =
+        runCatching { OffsetDateTime.parse(text).toInstant().toEpochMilli() }.getOrNull()
 
     private fun sendHeartbeat() = send("phoenix", "heartbeat", JSONObject())
 

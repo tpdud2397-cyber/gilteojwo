@@ -48,6 +48,7 @@ def main():
     print(f"긴급출동 시작: {dispatch_id}", flush=True)
 
     north = -start_meters  # 내 차 기준 남북 위치(m). 음수 = 남쪽
+    next_send = time.time()
     try:
         while north <= 300:
             call("send_position", {
@@ -60,7 +61,10 @@ def main():
                 "p_accuracy_m": 5,
             })
             print(f"{time.strftime('%H:%M:%S')} 보냄: 내 차 기준 {'남' if north < 0 else '북'}쪽 {abs(north):.0f}m", flush=True)
-            time.sleep(1)
+            # 서버 응답에 걸린 시간과 상관없이 정확히 1초마다 보낸다
+            # (그냥 1초 쉬면 응답 시간만큼 늦어져서 실제 속도가 느려지고 들쭉날쭉해진다)
+            next_send += 1
+            time.sleep(max(0.0, next_send - time.time()))
             north += speed_kmh / 3.6  # 1초 동안 간 거리
     finally:
         call("end_dispatch", {"p_reg_code": reg_code, "p_dispatch_id": dispatch_id, "p_end_type": "manual"})

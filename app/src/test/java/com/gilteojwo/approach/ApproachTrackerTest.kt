@@ -60,6 +60,53 @@ class ApproachTrackerTest {
     }
 
     @Test
+    fun `지나간 직후에는 5초 전보다 거리가 짧아도 도착 시간이 없다`() {
+        // 남쪽 50m에서 북쪽으로 1초에 20m씩 달려 내 차를 지나간다: 50m 뒤 → 30m 뒤 → 10m 뒤 → 10m 앞 → 30m 앞
+        listOf(-50.0, -30.0, -10.0, 10.0).forEachIndexed { second, north ->
+            tracker.update(me(second * 1000L), listOf(ambulance(CITY_HALL.moved(north, 0.0), 0.0, second * 1000L)))
+        }
+        val result = tracker.update(me(4000), listOf(ambulance(CITY_HALL.moved(30.0, 0.0), 0.0, 4000))).single()
+
+        assertEquals(RelativeDirection.FRONT, result.direction)
+        assertFalse(result.isApproaching)
+        assertNull(result.arrivalSeconds)
+    }
+
+    @Test
+    fun `내 위치와 구급차 위치가 오는 주기가 달라도 도착 시간은 실제 속도대로 나온다`() {
+        // 구급차 위치는 1초마다, 내 위치는 0.5~1.2초 간격으로 온다. 내 위치가 올 때는 가장 최근에 받은 구급차 위치로 계산한다.
+        // 구급차는 남쪽 500m에서 1초에 20m씩 다가온다 → 4초 뒤 420m, 남은 시간 420 ÷ 20 = 21초
+        var result: ApproachInfo? = null
+        for (myTime in listOf(0L, 500L, 1200L, 1700L, 2400L, 3600L, 4100L, 4800L)) {
+            val sentTime = myTime / 1000 * 1000 // 이 시각까지 받은 가장 최근 구급차 위치의 시각
+            val north = -(500.0 - 20.0 * sentTime / 1000)
+            result = tracker.update(me(myTime), listOf(ambulance(CITY_HALL.moved(north, 0.0), 0.0, sentTime))).single()
+        }
+
+        assertTrue(result!!.isApproaching)
+        assertEquals(21, result.arrivalSeconds)
+    }
+
+    @Test
+    fun `구급차 위치가 늦게 도착해도 서버에 기록된 시각으로 계산해 도착 시간이 흔들리지 않는다`() {
+        // 구급차 위치는 정확히 1초마다 서버에 기록되지만(남쪽 500m에서 1초에 20m씩), 내 차에는 0~0.5초씩 늦게 들어온다
+        val delays = listOf(0L, 400L, 100L, 300L, 500L)
+        var result: ApproachInfo? = null
+        delays.forEachIndexed { second, delay ->
+            val recordedTime = second * 1000L
+            val vehicle = EmergencyVehicle(
+                "구급차1", VehicleType.AMBULANCE, CITY_HALL.moved(-(500.0 - 20.0 * second), 0.0), 0.0, 72.0,
+                updatedMillis = recordedTime + delay, // 내 차가 받은 시각
+                recordedMillis = recordedTime, // 서버에 기록된 시각
+            )
+            result = tracker.update(me(recordedTime + delay), listOf(vehicle)).single()
+        }
+
+        // 4초 뒤 420m, 1초에 20m씩 → 21초
+        assertEquals(21, result!!.arrivalSeconds)
+    }
+
+    @Test
     fun `가까운 차가 목록 앞에 온다`() {
         val far = ambulance(CITY_HALL.moved(-900.0, 0.0), 0.0, 0, id = "먼 차")
         val near = ambulance(CITY_HALL.moved(200.0, 0.0), 180.0, 0, id = "가까운 차")

@@ -22,4 +22,7 @@ data class EmergencyVehicle(
     val headingDegrees: Double, // 긴급차량의 진행 방향 (0° = 북쪽)
     val speedKmh: Double,
     val updatedMillis: Long, // 이 앱이 마지막으로 받은 시각. 10초 넘게 새 소식이 없으면 목록에서 뺀다
+    // 이 위치가 서버에 기록된 시각(서버 시계, 표의 updated_at). 도착 시간 계산에 쓴다.
+    // 실시간 전달은 0.1~0.5초씩 들쭉날쭉 늦게 오므로, 받은 시각보다 이 시각이 실제 움직임과 맞다. 모르면 받은 시각
+    val recordedMillis: Long = updatedMillis,
 )

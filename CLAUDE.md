@@ -74,6 +74,7 @@
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
 - 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch. 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다(발표 전 확인).
   - 시험용 구급차 `TEST-AMB-1`이 등록돼 있다. 등록 코드는 저장소에 적지 않는다 (집 PC의 Claude 기억에 있음). 가짜 구급차: `python tools/fake_ambulance.py 등록코드`, 앱 계산 기록: `adb logcat -s Gilteojwo`.
+  - 사용자는 바탕화면 '가짜 구급차' 아이콘으로 직접 실행한다 (`tools/가짜구급차.bat`이 `tools/등록코드.txt`를 읽음. 이 코드 파일은 GitHub 제외라 저장소를 새로 받으면 다시 만든다).
 - 앱 구조: 한 프로젝트에서 APK 2개를 만든다 (product flavor). 폰용은 송신, 차량용은 수신 + Pleos 송신 모드다. 폰용에는 Pleos SDK와 차량 전용 라이브러리를 넣지 않는다.
 - APK 배포: main에 push하면 GitHub Actions(`.github/workflows/build.yml`)가 빌드해 Releases의 "개발 최신판"(태그 `dev`)을 새 파일로 바꾼다. 파일 이름 뒤에 _R번호를 붙인다: `gilteojwo-car_R5.apk`(차량용), `gilteojwo-phone_R5.apk`(폰용). R번호는 GitHub 빌드 번호이고 새 빌드마다 하나씩 올라간다 (사용자 요청, R5부터). 앱 화면 맨 위와 Releases 제목에도 같은 R번호가 보인다. 노트북과 폰은 Releases에서 받아 설치한다.
 
@@ -99,7 +100,9 @@
    - 진행 상황 (2026-11-01): 시험 앱 완성, 1차(10/31)·2차(11/01) 시험 완료. 코드는 `app/src/car/java/com/gilteojwo/sdktest/`, 결과와 남은 시험은 `docs/시험결과.md`.
 2. 결과를 `docs/시험결과.md`에 적고 사용자에게 요약한다.
 3. 그다음 본 개발을 한다. 수신은 R-1~R-4 → R-6·R-7·R-12 → R-10·R-15·R-16 → R-11·R-13·R-14·R-17 순서, 송신은 S-1~S-8.
-   - 진행 상황 (2026-11-01): R-1(내 위치), R-2(서버 실시간 수신), R-3(거리·방향·도착 시간), R-4(접근 판정)와 대기 화면 완료. 계산 시험 25개. 가짜 구급차로 에뮬레이터에서 확인함. 다음은 R-6·R-7·R-12. 구조는 `docs/설명노트.md`.
+   - 진행 상황 (2026-11-01): R-1(내 위치), R-2(서버 실시간 수신), R-3(거리·방향·도착 시간), R-4(접근 판정)와 대기 화면 완료. 구조는 `docs/설명노트.md`.
+   - 다음 단계 계획 (2026-11-01 사용자 확인): 1묶음 도착 시간 고치기 + 내 차 상태(R-5~R-8) → 2묶음 알림 단계·양보 문구 계산 + 8방향(시계 방향, 대각선은 두 면) → 3묶음 알림음·음성(R-12) + 앰비언트(R-15) → 4묶음 알림 화면(R-10, 레이더) + 내비 위 알림(상단 카드 + 지도 칸 가장자리 빛, 멀면 흐리고 가까우면 진하게, 200m 안 깜빡임). 왼쪽 주행 화면(Driving view)은 건드리지 않는다. 8방향은 사양서 R-3(4방향) 수정이 필요하다.
+   - 1묶음 완료 (2026-11-01): 도착 시간은 서버 기록 시각(updated_at)으로 계산하고 접근 중일 때만 낸다. 내 차 상태 읽기(`vehiclestate`)와 대기 화면 표시. 계산 시험 35개. 에뮬레이터·Virtual Console로 확인함. 다음은 2묶음.
 
 ## 코드 원칙
 

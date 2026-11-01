@@ -30,21 +30,28 @@ class ApproachTracker {
         val bearingToVehicle = GeoMath.bearingDegrees(my.point, vehicle.point)
         val direction = RelativeDirection.of(my.headingDegrees, bearingToVehicle)
 
-        // 지금 거리를 기록하고, 5초보다 오래된 기록은 버린다
+        // 지금 거리를 기록하고, 5초보다 오래된 기록은 버린다.
+        // 기록 시각은 내 위치 시각이 아니라 '긴급차량 위치가 서버에 기록된 시각'이다.
+        // ① 내 위치(약 1.2초)와 긴급차량 위치(1초)는 오는 주기가 달라서, 내 시각으로 적으면 가까워지는 속도가 튄다.
+        // ② 실시간 전달은 0.1~0.5초씩 들쭉날쭉 늦게 와서, 받은 시각으로 적어도 속도가 튄다.
         val samples = history.getOrPut(vehicle.id) { mutableListOf() }
-        samples.add(DistanceSample(my.timeMillis, distance))
-        samples.removeAll { my.timeMillis - it.timeMillis > HISTORY_MILLIS }
+        samples.add(DistanceSample(vehicle.recordedMillis, distance))
+        samples.removeAll { vehicle.recordedMillis - it.timeMillis > HISTORY_MILLIS }
 
-        // R-3 도착 시간: 거리가 1초에 몇 m씩 줄고 있는지로 계산한다
+        // R-3 거리가 1초에 몇 m씩 줄고 있는지
         val closingSpeed = closingSpeedMetersPerSecond(samples)
         val isClosing = closingSpeed >= MIN_CLOSING_SPEED
-        val arrivalSeconds = if (isClosing) (distance / closingSpeed).roundToInt() else null
 
         // R-4 접근 판정: 거리가 줄고 있고, 긴급차량이 내 쪽을 향해 달리고 있으면 '접근 중'
         val bearingToMe = GeoMath.bearingDegrees(vehicle.point, my.point)
         val headingTowardMe = GeoMath.angleDifference(vehicle.headingDegrees, bearingToMe) <= HEADING_TOLERANCE_DEGREES
+        val isApproaching = isClosing && headingTowardMe
 
-        return ApproachInfo(vehicle, distance, direction, arrivalSeconds, isClosing && headingTowardMe)
+        // R-3 도착 시간: 접근 중일 때만 낸다.
+        // 막 지나간 차는 5초 전보다 거리가 짧아 보여도(50m 뒤 → 30m 앞) 다가오는 것이 아니다.
+        val arrivalSeconds = if (isApproaching) (distance / closingSpeed).roundToInt() else null
+
+        return ApproachInfo(vehicle, distance, direction, arrivalSeconds, isApproaching)
     }
 
     /** 가장 오래된 기록과 가장 최근 기록을 비교해, 1초에 몇 m씩 가까워지는지. 기록이 하나뿐이면 0 */
