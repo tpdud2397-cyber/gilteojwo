@@ -21,7 +21,7 @@
 - 사용자는 명령어를 직접 입력하지 않는다. 필요한 명령은 Claude Code가 실행하고, 무엇을 왜 실행하는지 한 줄로 알린다. 사용자에게 PowerShell이나 스크립트를 실행하라고 안내하지 않는다.
 - SQL(Supabase)은 파일이 아니라 채팅에 코드 블록으로 준다. 사용자가 Supabase SQL 편집기에 붙여 실행한다.
 - 사용자는 평일 07:30~16:30에 회사에 있고, 회사 PC는 파일 업로드가 막혀 있다. 빌드와 에뮬레이터 작업은 퇴근 후 이 집 PC에서 한다.
-- 기획·사양 변경은 claude.ai의 "현대앱공모전" 프로젝트에서 한다. 구현하다 사양과 다르게 가야 하면 먼저 사용자에게 알리고, `docs/사양서.md` 수정은 사용자 확인 후에 한다.
+- 기획·사양 변경은 claude.ai의 "현대앱공모전" 프로젝트에서 한다. 구현하다 사양과 다르게 가야 하면 먼저 사용자에게 알리고, 사양서 수정(원본 문서와 `docs/사양서.md`)은 사용자 확인 후에 한다.
 
 ## GitHub (중요)
 
@@ -47,7 +47,7 @@
 
 - Windows 11, AMD Ryzen 7 5800X, RAM 32GB, RTX 5070. BIOS에서 SVM(가상화)을 켰고, Windows 하이퍼바이저 플랫폼도 켰다.
 - Android Studio Rabbit 2 (2026.2.2). SDK 위치: `C:\Users\bsy92\AppData\Local\Android\Sdk`
-- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 `C:\Users\bsy92\.jdks\temurin-17`에 받아 두었다 (2026-11-01). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 집 PC 빌드는 화면에 "PC 빌드 (11/01 11:51)"처럼 만든 시각으로 나오고(버전 번호 1), Releases 판보다 번호가 낮아서 `adb install -r -d`로 덮어 설치한다. 계산 시험은 `./gradlew testCarDebugUnitTest`.
+- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 `C:\Users\bsy92\.jdks\temurin-17`에 받아 두었다 (2026-11-01). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 앱 버전은 항상 R번호로 보인다 (사용자 요청 11/01). GitHub 빌드는 끝에 `R번호` 태그를 남기고, 집 PC 빌드는 화면에 "R15 · PC 11/01 13:13"처럼 '가장 큰 R태그 + 1'(다음에 올릴 번호)로 나온다. 그래서 PC 빌드 전에 `git fetch --tags`를 먼저 한다. 설치는 `adb install -r -d`. 계산 시험은 `./gradlew testCarDebugUnitTest`.
 - Git Bash에서 `adb shell` 뒤에 `/sdcard/...` 같은 경로를 쓰면 윈도우 경로로 바뀌어 버린다. 명령 앞에 `MSYS_NO_PATHCONV=1`을 둔다.
 - 에뮬레이터: Pleos Connect v2.1.0 APIs (API 34, x86_64). AVD 이름은 `Pleos_Connect_v2.1.0`, 포트 5554. 권장 설정은 RAM 4GB, Cold boot.
 - Virtual Console: 에뮬레이터를 켠 뒤 `adb forward tcp:8088 tcp:8088`을 실행하고, 브라우저에서 http://127.0.0.1:8088/ 을 연다. 사용자가 바탕화면 바로가기로 만들어 뒀을 수 있다. 필요하면 Claude Code가 직접 실행한다.
@@ -101,7 +101,8 @@
 2. 결과를 `docs/시험결과.md`에 적고 사용자에게 요약한다.
 3. 그다음 본 개발을 한다. 수신은 R-1~R-4 → R-6·R-7·R-12 → R-10·R-15·R-16 → R-11·R-13·R-14·R-17 순서, 송신은 S-1~S-8.
    - 진행 상황 (2026-11-01): R-1(내 위치), R-2(서버 실시간 수신), R-3(거리·방향·도착 시간), R-4(접근 판정)와 대기 화면 완료. 구조는 `docs/설명노트.md`.
-   - 다음 단계 계획 (2026-11-01 사용자 확인): 1묶음 도착 시간 고치기 + 내 차 상태(R-5~R-8) → 2묶음 알림 단계·양보 문구 계산 + 8방향(시계 방향, 대각선은 두 면) → 3묶음 알림음·음성(R-12) + 앰비언트(R-15) → 4묶음 알림 화면(R-10, 레이더) + 내비 위 알림(상단 카드 + 지도 칸 가장자리 빛, 멀면 흐리고 가까우면 진하게, 200m 안 깜빡임). 왼쪽 주행 화면(Driving view)은 건드리지 않는다. 8방향은 사양서 R-3(4방향) 수정이 필요하다.
+   - 다음 단계 계획 (2026-11-01 사용자 확인): 1묶음 도착 시간 고치기 + 내 차 상태(R-5~R-8) → 2묶음 알림 단계·양보 문구 계산 + 8방향(시계 방향, 대각선은 두 면) → 3묶음 알림음·음성(R-12) + 앰비언트(R-15) → 4묶음 알림 화면(R-10, 레이더) + 내비 위 알림(상단 카드 + 지도 칸 가장자리 빛, 멀면 흐리고 가까우면 진하게, 200m 안 깜빡임). 왼쪽 주행 화면(Driving view)은 건드리지 않는다.
+   - 원본 사양서(Claude Docs 문서)는 Claude가 Docs 도구로 직접 고칠 수 있다 (사용자 허락 11/01). 고친 뒤 `docs/사양서.md` 사본에도 같은 내용을 반영한다 (내보내기를 쓰면 '시스템 구성' 그림이 빠지므로 직접 고친다). 11/01에 8방향, 레이더·가장자리 빛, 내비 위 알림 둘 다, 앰비언트 구역 1개, 시험으로 확인된 항목을 반영했다.
    - 1묶음 완료 (2026-11-01): 도착 시간은 서버 기록 시각(updated_at)으로 계산하고 접근 중일 때만 낸다. 내 차 상태 읽기(`vehiclestate`)와 대기 화면 표시. 계산 시험 35개. 에뮬레이터·Virtual Console로 확인함. 다음은 2묶음.
 
 ## 코드 원칙

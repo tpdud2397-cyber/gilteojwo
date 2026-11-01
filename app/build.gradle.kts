@@ -6,14 +6,22 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// 화면 맨 위에 보여줄 빌드 이름.
-// GitHub Actions에서 빌드하면 "R8 (커밋 abc1234)"처럼 R번호와 커밋 번호를 쓴다.
-// 집 PC에서 빌드하면 R번호가 없으니 "PC 빌드 (11/01 12:05)"처럼 만든 시각을 쓴다.
+// 화면 맨 위에 보여줄 빌드 이름. 항상 R번호로 보여준다 (사용자 요청, 11/01).
+// GitHub Actions에서 빌드하면 "R8 (커밋 abc1234)"처럼 R번호(GitHub 빌드 번호)와 커밋 번호를 쓴다.
+// 집 PC에서 빌드하면 "R9 · PC 11/01 12:05"처럼 쓴다. 9 = GitHub가 남긴 R태그 중 가장 큰 번호 + 1,
+// 즉 이 코드를 올리면 GitHub가 만들 다음 번호다. (태그를 받으려면 PC에서 먼저 git fetch --tags)
 val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+val latestTagNumber = runCatching {
+    ProcessBuilder("git", "tag", "--list", "R*").directory(rootDir).start()
+        .inputStream.bufferedReader().readLines()
+        .mapNotNull { it.trim().removePrefix("R").toIntOrNull() }
+        .maxOrNull()
+}.getOrNull() ?: 0
+val rNumber = runNumber ?: (latestTagNumber + 1)
 val buildLabel = if (runNumber != null) {
     "R$runNumber (커밋 ${System.getenv("GITHUB_SHA")?.take(7)})"
 } else {
-    "PC 빌드 (${SimpleDateFormat("MM/dd HH:mm").format(Date())})"
+    "R$rNumber · PC ${SimpleDateFormat("MM/dd HH:mm").format(Date())}"
 }
 
 android {
@@ -27,9 +35,9 @@ android {
         applicationId = "com.gilteojwo"
         minSdk = 28
         targetSdk = 34
-        // PC 빌드는 번호 1. GitHub 판(R2 이상)을 그 위에 덮어 설치할 수 있다
-        versionCode = runNumber ?: 1
-        versionName = if (runNumber != null) "R$runNumber" else "PC 빌드"
+        // 버전 번호 = R번호. 같은 R번호의 GitHub 판을 PC 판 위에 그대로 덮어 설치할 수 있다
+        versionCode = rNumber
+        versionName = if (runNumber != null) "R$runNumber" else "R$rNumber-PC"
         buildConfigField("String", "BUILD_LABEL", "\"$buildLabel\"")
     }
 

@@ -60,3 +60,9 @@ jobs:
           - 폰용: gilteojwo-phone_R$GITHUB_RUN_NUMBER.apk
           - 앱 화면 맨 위에 R$GITHUB_RUN_NUMBER 이 보이면 이 파일이 깔린 것입니다.
           - 커밋: $GITHUB_SHA"
+
+      # 이 빌드의 R번호를 태그(R14 등)로 남긴다. 집 PC 빌드가 이 태그를 보고 '다음 R번호'를 알 수 있다
+      - name: R번호 태그 남기기
+        run: |
+          git tag "R$GITHUB_RUN_NUMBER" "$GITHUB_SHA"
+          git push origin "R$GITHUB_RUN_NUMBER"
