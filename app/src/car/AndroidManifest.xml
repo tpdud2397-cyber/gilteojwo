@@ -26,6 +26,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 다른 앱(내비) 위에 화면을 덮어 그리기 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 앱 화면 없이 뒤에서 계속 돌기 (알림창에 '길터줘 수신 중' 표시) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 차를 켜면 자동으로 시작 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application>
         <!-- 안드로이드 차량 표준 기능 라이브러리 -->
@@ -46,6 +51,26 @@
                 android:name="distractionOptimized"
                 android:value="true" />
         </activity>
+
+        <!-- 수신 서비스: 앱 화면을 열지 않아도 뒤에서 위치·긴급차량을 받아 계산하고 알린다 -->
+        <service
+            android:name=".service.ReceiveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="긴급차량 접근 알림: 내비를 쓰는 중에도 주변 긴급차량을 받아 화면·소리로 알린다" />
+        </service>
+
+        <!-- 차가 켜지거나 새 판이 설치되면 수신 서비스를 자동으로 시작 -->
+        <receiver
+            android:name=".service.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- SDK 시험 화면. 앱 목록에 "길터줘 시험"으로 따로 보인다 -->
         <activity

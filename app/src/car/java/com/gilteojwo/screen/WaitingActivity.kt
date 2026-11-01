@@ -4,23 +4,15 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
-import android.util.Log
+import android.provider.Settings
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.gilteojwo.BuildInfo
 import com.gilteojwo.alert.AlertStage
-import com.gilteojwo.alert.AlertStageJudge
-import com.gilteojwo.alert.AlertState
-import com.gilteojwo.alert.YieldGuide
 import com.gilteojwo.approach.ApproachInfo
-import com.gilteojwo.approach.ApproachTracker
-import com.gilteojwo.mylocation.MyLocationTracker
-import com.gilteojwo.mylocation.MyPosition
 import com.gilteojwo.permission.PermissionHelper
-import com.gilteojwo.receive.EmergencyVehicle
-import com.gilteojwo.receive.EmergencyVehicleReceiver
-import com.gilteojwo.vehiclestate.VehicleState
-import com.gilteojwo.vehiclestate.VehicleStateReader
+import com.gilteojwo.service.ReceiveService
+import com.gilteojwo.service.ReceiveSnapshot
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,42 +20,29 @@ import kotlin.math.roundToInt
 
 /**
  * 수신 대기 화면 (길터줘를 켜면 처음 보이는 화면).
- * 내 위치(R-1)와 주변 긴급차량 목록(R-2)을 받아, 차마다 거리·방향·도착 시간·접근 여부(R-3·R-4)를 보여준다.
- * 내 차 상태(R-5~R-8: 속도·기어·브레이크·방향지시등)도 한 줄로 보여준다.
- * 알림 단계(관심·경고·양보·해제)와 양보 안내 문구도 글자로 보여준다 (알림 화면·소리·조명은 다음 묶음).
- * 지금은 확인용으로 숫자를 그대로 보여주고, 알림 화면·소리·조명은 다음 단계에서 붙인다.
+ * 계산과 알림은 모두 수신 서비스(ReceiveService)가 뒤에서 한다. 이 화면은 그 결과를 보여주기만 한다.
+ * 그래서 이 화면을 닫거나 내비로 넘어가도 알림은 계속 온다.
+ * 처음 켤 때 권한을 받고 수신 서비스를 시작한다 (차를 켤 때도 서비스가 저절로 시작된다).
  */
 class WaitingActivity : Activity() {
-    private lateinit var locationTracker: MyLocationTracker
-    private lateinit var vehicleReceiver: EmergencyVehicleReceiver
-    private lateinit var vehicleStateReader: VehicleStateReader
-    private val approachTracker = ApproachTracker()
-    private val alertJudge = AlertStageJudge()
-
-    private var myPosition: MyPosition? = null
-    private var vehicles: List<EmergencyVehicle> = emptyList() // 서버에서 받은 출동 중 긴급차량
-    private var serverStatus = "연결 준비"
-    private var results: List<ApproachInfo> = emptyList() // 차마다 거리·방향·도착 시간·접근 여부
-    private var vehicleState = VehicleState() // 내 차 속도·기어·브레이크·방향지시등
-    private var alertState = AlertState(AlertStage.NONE, null) // 지금 알림 단계와 알리는 긴급차량
-
     private lateinit var headerText: TextView
     private lateinit var serverText: TextView
     private lateinit var myLocationText: TextView
     private lateinit var vehicleStateText: TextView
-    private lateinit var alertText: TextView
     private lateinit var vehiclesText: TextView
+    private lateinit var alertText: TextView
+    private lateinit var problemText: TextView
+
+    // 수신 서비스가 새 결과를 낼 때마다 불린다
+    private val onSnapshot: (ReceiveSnapshot) -> Unit = { render(it) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         buildScreen()
-        locationTracker = MyLocationTracker(this) { position -> onMyPositionChanged(position) }
-        vehicleReceiver = EmergencyVehicleReceiver { list, status -> onVehiclesChanged(list, status) }
-        vehicleStateReader = VehicleStateReader(this) { state -> onVehicleStateChanged(state) }
 
-        // 권한이 다 있으면 바로 시작하고, 없으면 먼저 허락을 받는다
+        // 권한이 다 있으면 바로 수신을 시작하고, 없으면 먼저 허락을 받는다
         if (PermissionHelper.missing(this).isEmpty()) {
-            start()
+            ReceiveService.start(this)
         } else {
             PermissionHelper.requestMissing(this)
         }
@@ -71,100 +50,49 @@ class WaitingActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == PermissionHelper.REQUEST_CODE) start()
+        if (requestCode == PermissionHelper.REQUEST_CODE) ReceiveService.start(this)
     }
 
-    override fun onDestroy() {
-        locationTracker.stop()
-        vehicleReceiver.stop()
-        vehicleStateReader.stop()
-        super.onDestroy()
+    override fun onResume() {
+        super.onResume()
+        ReceiveService.addListener(onSnapshot)
+        render(ReceiveService.latest ?: ReceiveSnapshot())
     }
 
-    private fun start() {
-        try {
-            locationTracker.start()
-        } catch (e: Exception) {
-            myLocationText.text = "내 위치: 시작 실패 (${e.message})"
+    override fun onPause() {
+        ReceiveService.removeListener(onSnapshot)
+        super.onPause()
+    }
+
+    private fun render(snapshot: ReceiveSnapshot) {
+        val overlay = if (Settings.canDrawOverlays(this)) "가장자리 빛: 허용됨" else "가장자리 빛: '다른 앱 위에 표시' 허용 필요"
+        headerText.text = "길터줘 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)} · $overlay"
+        serverText.text = "서버 연결: ${snapshot.serverStatus} · 출동 중 긴급차량 ${snapshot.vehicleCount}대"
+        vehicleStateText.text = "내 차: ${snapshot.vehicleState.describe()}"
+        problemText.text = snapshot.problems.joinToString("\n")
+
+        val my = snapshot.myPosition
+        myLocationText.text = if (my == null) {
+            "내 위치 (${snapshot.locationSource}): 기다리는 중"
+        } else {
+            "내 위치 (${snapshot.locationSource}): " +
+                "위도 %.6f, 경도 %.6f, 진행 방향 %.0f° · %s".format(
+                    my.point.latitude, my.point.longitude, my.headingDegrees, timeText(my.timeMillis),
+                )
         }
-        vehicleReceiver.start()
-        // 내 차 상태를 못 읽어도 긴급차량 알림은 계속 돼야 하므로, 실패하면 기록만 남긴다 (화면에는 '확인 중'으로 보임)
-        try {
-            vehicleStateReader.start()
-        } catch (e: Exception) {
-            Log.w(LOG_TAG, "내 차 상태 읽기 시작 실패: ${e.message}")
-        }
-        refresh()
-    }
 
-    /** 내 위치가 새로 올 때마다(약 1초) 거리·방향·도착 시간·접근 여부를 다시 계산한다 */
-    private fun onMyPositionChanged(position: MyPosition) {
-        myPosition = position
-        results = approachTracker.update(position, vehicles)
-        alertState = alertJudge.update(results, position.timeMillis)
-        // 집 PC에서 `adb logcat -s Gilteojwo`로 계산 결과를 시간순으로 볼 수 있다
-        Log.i(
-            LOG_TAG,
-            "계산: 긴급차량 ${results.size}대 " + results.joinToString(" / ") { describe(it) } +
-                " | 내 차: ${vehicleState.describe()} | 알림: ${alertLine()}",
-        )
-        refresh()
-    }
+        vehiclesText.text = "주변 긴급차량: ${snapshot.results.size}대" +
+            snapshot.results.joinToString("") { "\n· " + describe(it) }
 
-    /** 속도·기어·브레이크·방향지시등 중 하나라도 바뀌면 화면만 다시 그린다 */
-    private fun onVehicleStateChanged(state: VehicleState) {
-        vehicleState = state
-        refresh()
-    }
-
-    /** 서버 목록이 바뀌면 기억만 해 두고, 계산은 다음 내 위치가 올 때(1초 안) 한다 */
-    private fun onVehiclesChanged(list: List<EmergencyVehicle>, status: String) {
-        vehicles = list
-        serverStatus = status
-        refresh()
-    }
-
-    private fun refresh() {
-        headerText.text = "길터줘 · ${BuildInfo.text()} · ${PermissionHelper.statusText(this)}"
-        serverText.text = "서버 연결: $serverStatus · 출동 중 긴급차량 ${vehicles.size}대"
-        vehicleStateText.text = "내 차: ${vehicleState.describe()}"
-
-        val my = myPosition
-        if (my == null) {
-            myLocationText.text = "내 위치 (${locationTracker.sourceName}): 기다리는 중"
-            vehiclesText.text = "주변 긴급차량: 내 위치를 받으면 계산합니다"
-            return
-        }
-        myLocationText.text = "내 위치 (${locationTracker.sourceName}): " +
-            "위도 %.6f, 경도 %.6f, 진행 방향 %.0f° · %s".format(
-                my.point.latitude, my.point.longitude, my.headingDegrees, timeText(my.timeMillis)
-            )
-
-        vehiclesText.text = "주변 긴급차량: ${results.size}대" +
-            results.joinToString("") { "\n· " + describe(it) }
-
-        alertText.text = "알림: ${alertLine()}"
+        alertText.text = "알림: ${ReceiveService.describeAlert(snapshot)}"
         alertText.setTextColor(
-            when (alertState.stage) {
+            when (snapshot.alert.stage) {
                 AlertStage.ATTENTION -> Color.parseColor("#FF9800") // 주황
                 AlertStage.WARNING, AlertStage.YIELD -> Color.parseColor("#F44336") // 빨강
                 AlertStage.CLEARED -> Color.parseColor("#4CAF50") // 초록
                 AlertStage.NONE -> Color.GRAY
             },
         )
-    }
-
-    /** 예: "양보 · 구급차 후방(6시) 150m · 약 9초 · 우측으로 비켜주세요" */
-    private fun alertLine(): String {
-        val target = alertState.target ?: return alertState.stage.koreanName
-        val advice = YieldGuide.choose(alertState, myPosition?.headingDegrees ?: 0.0, vehicleState)
-        return listOfNotNull(
-            alertState.stage.koreanName,
-            "${target.vehicle.type.koreanName} ${target.direction.koreanName}(${target.direction.clock}) " +
-                "${target.distanceMeters.roundToInt()}m",
-            target.arrivalText,
-            advice?.text,
-        ).joinToString(" · ")
     }
 
     /** 예: "구급차 · 후방(6시) · 480m · 약 24초 · 접근 중" */
@@ -182,6 +110,8 @@ class WaitingActivity : Activity() {
         root.setPadding(48, 32, 48, 32)
 
         headerText = addText(root, 20f)
+        problemText = addText(root, 20f)
+        problemText.setTextColor(Color.parseColor("#F44336"))
         serverText = addText(root, 26f)
         myLocationText = addText(root, 26f)
         vehicleStateText = addText(root, 26f)
@@ -207,8 +137,4 @@ class WaitingActivity : Activity() {
     }
 
     private fun timeText(millis: Long): String = SimpleDateFormat("HH:mm:ss", Locale.KOREA).format(Date(millis))
-
-    companion object {
-        const val LOG_TAG = "Gilteojwo"
-    }
 }
