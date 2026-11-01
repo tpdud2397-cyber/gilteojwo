@@ -5,7 +5,7 @@
 쓰는 법 (집 PC에서 Claude Code가 실행한다. 사용자는 바탕화면 '가짜 구급차' 아이콘):
     python tools/fake_ambulance.py 등록코드 [내차위도 내차경도] [시작거리m] [시속km] [오는쪽]
 
-기본: 에뮬레이터 기본 위치(성남 시흥동)의 남쪽 600m에서 출발해 북쪽으로 시속 60km로 달려온다 (내 차 뒤에서 옴).
+기본: 에뮬레이터 기본 위치(성남 시흥동)의 남쪽 1,200m에서 출발해 북쪽으로 시속 60km로 달려온다 (내 차 뒤에서 옴).
 오는쪽에 '왼쪽'을 주면 서쪽에서 출발해 동쪽으로 달려 내 차 앞을 가로지른다 (교차로 측면 접근).
 내 차를 지나 300m 더 간 뒤 긴급출동을 끝낸다 (서버에서 위치가 바로 지워진다).
 등록 코드는 비밀이라 이 파일에 적지 않는다.
@@ -43,7 +43,7 @@ def main():
     reg_code = sys.argv[1]
     my_lat = float(sys.argv[2]) if len(sys.argv) > 3 else 37.383537
     my_lon = float(sys.argv[3]) if len(sys.argv) > 3 else 126.934173
-    start_meters = float(sys.argv[4]) if len(sys.argv) > 4 else 600.0
+    start_meters = float(sys.argv[4]) if len(sys.argv) > 4 else 1200.0  # 관심 단계(1,000m)부터 보이게 1,200m (11/01 사용자 요청)
     speed_kmh = float(sys.argv[5]) if len(sys.argv) > 5 else 60.0
     from_left = len(sys.argv) > 6 and sys.argv[6] == "왼쪽"
     meters_per_degree_lon = METERS_PER_DEGREE * math.cos(math.radians(my_lat))  # 경도 1도의 길이

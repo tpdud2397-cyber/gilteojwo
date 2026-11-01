@@ -15,7 +15,7 @@ if not exist "tools\등록코드.txt" (
 set /p REG_CODE=<"tools\등록코드.txt"
 
 echo 가짜 구급차를 출발시킵니다. 에뮬레이터에서 길터줘 앱을 열어 두세요.
-echo 1분쯤 뒤에 저절로 끝납니다. 중간에 멈추려면 이 창을 닫으세요.
+echo 1분 30초쯤 뒤에 저절로 끝납니다. 중간에 멈추려면 이 창을 닫으세요.
 echo.
 python tools\fake_ambulance.py %REG_CODE% %*
 echo.
