@@ -35,3 +35,7 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Claude Code: 개인 설정과 작업용 폴더는 올리지 않는다
+.claude/settings.local.json
+.claude/worktrees/
