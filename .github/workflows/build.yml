@@ -1,10 +1,13 @@
 # main에 올릴 때마다 폰용·차량용 APK를 만들어 Releases의 "개발 최신판"에 올린다.
+# v로 시작하는 태그(예: v1.0)를 올리면 그 커밋의 APK를 "제출본" 릴리즈로 따로 고정해 둔다.
 # 파일 이름 뒤에 _R번호를 붙인다 (번호 = GitHub 빌드 번호, 앱 화면 맨 위의 R번호와 같다).
 name: APK 빌드
 
 on:
   push:
     branches: [main]
+    # 제출본: v1.0 같은 태그를 올리면 빌드해서 따로 보관한다 (태그에는 아래 paths-ignore가 적용되지 않는다)
+    tags: ["v*"]
     # 문서나 시험 도구(가짜 구급차)만 바꾼 경우에는 앱을 다시 만들지 않는다 (R번호가 쓸데없이 올라가지 않게)
     paths-ignore:
       - "docs/**"
@@ -14,7 +17,7 @@ on:
 
 # 짧은 시간에 여러 번 올리면 마지막 것만 빌드한다
 concurrency:
-  group: apk-build
+  group: apk-build-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -48,6 +51,7 @@ jobs:
           ls -l out
 
       - name: Releases의 "개발 최신판" 교체
+        if: github.ref_type == 'branch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,6 +64,22 @@ jobs:
           - 차량용(에뮬레이터): gilteojwo-car_R$GITHUB_RUN_NUMBER.apk
           - 폰용: gilteojwo-phone_R$GITHUB_RUN_NUMBER.apk
           - 앱 화면 맨 위에 R$GITHUB_RUN_NUMBER 이 보이면 이 파일이 깔린 것입니다.
+          - 커밋: $GITHUB_SHA"
+
+      # 제출본: 태그 이름(v1.0 등)으로 릴리즈를 만든다. 개발 최신판과 달리 다음 빌드가 덮어쓰지 않는다
+      - name: Releases에 "제출본" 고정
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/*.apk \
+            --verify-tag \
+            --latest \
+            --title "제출본 $GITHUB_REF_NAME (R$GITHUB_RUN_NUMBER)" \
+            --notes "공모전 제출용으로 고정한 판입니다. 이 릴리즈의 파일은 바뀌지 않습니다.
+          - 차량용(Pleos Connect 에뮬레이터): gilteojwo-car_R$GITHUB_RUN_NUMBER.apk
+          - 폰용(긴급차량 송신, 선택): gilteojwo-phone_R$GITHUB_RUN_NUMBER.apk
+          - 실행 방법: 저장소 README의 '실행 방법'
           - 커밋: $GITHUB_SHA"
 
       # 이 빌드의 R번호를 태그(R14 등)로 남긴다. 집 PC 빌드가 이 태그를 보고 '다음 R번호'를 알 수 있다
