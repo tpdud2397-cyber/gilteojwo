@@ -78,7 +78,7 @@
 - 주행 제한 강제 켜기/끄기 (Pleos ADB 안내 문서): `adb shell cmd hmg_car_service --service drivingstate driving_regulation on` / `off`. 단, 지금 에뮬레이터에서는 "Can't find service: hmg_car_service"로 안 된다 (11/01). Virtual Console에서 기어를 D로 바꾸면 주행 제한이 걸린다.
 - FusedLocation: LocationData에 위도·경도·고도·진행 방향·신뢰도·시각이 있고 속도는 없다. isSupported()를 먼저 부른다. 안드로이드 표준 위치 권한의 동작은 보장하지 않는다고 문서에 적혀 있다.
 - TTS: ON_DEVICE 모드는 앱 등록이 필요 없다.
-- 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch·check_vehicle(등록 확인)·dispatch_status(알림·양보 수, 11/01 추가). 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다(발표 전 확인).
+- 서버: Supabase 프로젝트 `gilteojwo` (2026-11-01 생성, 도쿄 ap-northeast-1, 주소 https://fywibzrjqjdtntdhungh.supabase.co). 공개 키(publishable)는 `receive/ServerConfig.kt`에 있다. 표는 vehicles, dispatches, positions_live, yield_acks와 목록 positions_active, 송신 기능 start_dispatch·send_position·end_dispatch·check_vehicle(등록 확인)·dispatch_status(알림·양보 수, 11/01 추가). 구조는 `docs/설명노트.md`의 '서버'. 무료 요금제라 일주일 안 쓰면 멈춘다. 그래서 GitHub Actions '서버 깨우기'(`.github/workflows/keepalive.yml`)가 매일 오전 9시 23분에 긴급차량 목록을 한 번 읽는다 (사용자 요청 11/13). 이 작업이 실패(빨간 X)하면 서버가 멈춘 것이니 Supabase 화면에서 다시 켠다.
   - 시험용 구급차 `TEST-AMB-1`이 등록돼 있다. 등록 코드는 저장소에 적지 않는다 (집 PC의 Claude 기억에 있음). 가짜 구급차: `python tools/fake_ambulance.py 등록코드`, 앱 계산 기록: `adb logcat -s Gilteojwo`.
   - 사용자는 바탕화면 '가짜 구급차' 아이콘으로 직접 실행한다 (`tools/가짜구급차.bat`이 `tools/등록코드.txt`를 읽음. 이 코드 파일은 GitHub 제외라 저장소를 새로 받으면 다시 만든다).
 - 앱 구조: 한 프로젝트에서 APK 2개를 만든다 (product flavor). 폰용은 송신, 차량용은 수신 + Pleos 송신 모드다. 폰용에는 Pleos SDK와 차량 전용 라이브러리를 넣지 않는다.
