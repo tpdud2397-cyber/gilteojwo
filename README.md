@@ -21,7 +21,7 @@
 | `gilteojwo-car_R번호.apk` | Pleos Connect 에뮬레이터 | 차량 앱: 수신(알림·양보 안내) + 송신 모드(시연 모드 포함) |
 | `gilteojwo-phone_R번호.apk` | 안드로이드 폰 (선택) | 긴급차량용 송신 앱 |
 
-- **1차 제출본**: [Releases · v1.0](https://github.com/tpdud2397-cyber/gilteojwo/releases/tag/v1.0)
+- **1차 제출본**: [Releases · v1.1](https://github.com/tpdud2397-cyber/gilteojwo/releases/tag/v1.1)
 - 개발 최신판: [Releases · dev](https://github.com/tpdud2397-cyber/gilteojwo/releases/tag/dev)
 - 앱 화면 맨 위의 R번호가 파일 이름의 R번호와 같으면 그 파일이 설치된 것입니다.
 

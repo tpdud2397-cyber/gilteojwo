@@ -20,15 +20,16 @@
 - 코드 작성·수정은 사용자가 요청할 때만 한다. 큰 작업은 계획을 먼저 보여주고 확인받은 뒤 진행한다.
 - 사용자는 명령어를 직접 입력하지 않는다. 필요한 명령은 Claude Code가 실행하고, 무엇을 왜 실행하는지 한 줄로 알린다. 사용자에게 PowerShell이나 스크립트를 실행하라고 안내하지 않는다.
 - SQL(Supabase)은 파일이 아니라 채팅에 코드 블록으로 준다. 사용자가 Supabase SQL 편집기에 붙여 실행한다.
-- 사용자는 평일 07:30~16:30에 회사에 있고, 회사 PC는 파일 업로드가 막혀 있다. 빌드와 에뮬레이터 작업은 퇴근 후 이 집 PC에서 한다.
+- 빌드와 에뮬레이터 작업은 집 PC에서 한다. 사용자가 언제 집 PC를 쓸 수 있는지는 `CLAUDE.local.md`에 있다.
+- **저장소가 공개라서 이 파일에는 개인 정보를 쓰지 않는다** (근무 시간, 집 PC·노트북 사양, 사용자 폴더 경로, 다른 GitHub 계정 이름 등). 그런 내용은 집 PC에만 있는 `CLAUDE.local.md`(GitHub 제외)에 쓴다 (사용자 결정 11/13).
 - 기획·사양 변경은 claude.ai의 "현대앱공모전" 프로젝트에서 한다. 구현하다 사양과 다르게 가야 하면 먼저 사용자에게 알리고, 사양서 수정(원본 문서와 `docs/사양서.md`)은 사용자 확인 후에 한다.
 
 ## GitHub (중요)
 
-- 저장소: https://github.com/tpdud2397-cyber/gilteojwo (계정 tpdud2397-cyber). 접수 마감(11/15 23:59)까지는 비공개. 공개 전환 여부는 아래 '1차 제출' 참고.
+- 저장소: https://github.com/tpdud2397-cyber/gilteojwo (계정 tpdud2397-cyber). **공개(Public)** (11/13 전환, 1차 발표일까지 유지). 이전 커밋 기록에는 공개 전에 쓴 개인 정보가 남아 있다 (사용자가 알고 결정함).
 - 커밋 작성자는 항상 tpdud2397-cyber로 한다: 이름 `tpdud2397-cyber`, 이메일 `tpdud2397@gmail.com`. 저장소 로컬 설정으로 지정한다.
-- 클라우드 세션(claude.ai/code, claude.ai 대화)은 Claude 계정에 연결된 chungyakgo-maker 계정을 통해 push한다(협업자 초대 + Claude GitHub 앱 설치 완료). 커밋 작성자만 위처럼 맞추면 된다.
-- 로컬 세션(집 PC)에는 다른 GitHub 계정(chungyakgo-maker)을 쓰는 프로젝트도 있을 수 있다. 섞이지 않게 한다.
+- 클라우드 세션(claude.ai/code, claude.ai 대화)은 Claude 계정에 연결된 협업자 계정을 통해 push한다(협업자 초대 + Claude GitHub 앱 설치 완료, 계정 이름은 `CLAUDE.local.md`). 커밋 작성자만 위처럼 맞추면 된다.
+- 로컬 세션(집 PC)에는 다른 GitHub 계정을 쓰는 프로젝트도 있을 수 있다. 섞이지 않게 한다.
   - git 사용자 이름·이메일은 이 저장소에만 설정한다 (`git config --local`). 전역 설정은 건드리지 않는다.
   - 원격 주소에 계정 이름을 넣는다: `https://tpdud2397-cyber@github.com/tpdud2397-cyber/gilteojwo.git` (자격 증명이 계정별로 따로 저장된다).
   - 첫 push 때 브라우저 로그인 창이 뜨면 **tpdud2397-cyber**로 로그인하라고 사용자에게 안내한다.
@@ -38,26 +39,27 @@
 - 예외: 개발용 서명 키 `app/debug.keystore`는 시험판을 덮어 설치하려고 저장소에 넣었다 (사용자 동의, 비밀번호는 공개 기본값 "android"). 제출용 정식판 서명 키는 저장소에 넣지 않고 GitHub Secrets에 둔다.
 - 1차 제출 (운영사무국 메일 11/12, 기록은 `docs/설명회_정리.md`):
   - 심사는 사용자가 메일로 회신한 **최종 커밋 번호**의 코드와 APK로 한다. 접수 마감(11/15 23:59) 뒤에 고친 내용은 심사하지 않는다.
-  - 마감 뒤 11/16(월)까지 저장소를 공개(Public)로 바꾸고 1차 발표일까지 유지해야 개발 산출물 가산점이 붙는다. 공개하지 않으면 가산점만 빠지고 접수는 유효하다. 대신 소스+APK 압축 파일을 마감 전에 메일로 내도 가산점이 같다.
+  - 마감 뒤 11/16(월)까지 저장소를 공개(Public)로 바꾸고 1차 발표일까지 유지해야 개발 산출물 가산점이 붙는다 (11/13 공개 완료). 공개하지 않으면 가산점만 빠지고 접수는 유효하다. 대신 소스+APK 압축 파일을 마감 전에 메일로 내도 가산점이 같다.
   - 심사용 GitHub 계정은 따로 없다. Collaborator 초대는 필요 없다.
   - 수정 제출은 작품마다 메일을 따로 보내고 제목에 작품명을 적는다.
-  - 제출본 APK: GitHub Actions의 'APK 빌드'를 손으로 실행하며 `submit_tag`에 `v1.0`을 넣으면(또는 `v`로 시작하는 태그를 올리면) 그 커밋으로 빌드해 Releases에 "제출본 v1.0"으로 고정한다 ("개발 최신판"과 달리 덮어쓰지 않는다). README의 실행 방법이 이 릴리즈를 가리킨다. 클라우드 세션에서는 태그 push가 끊겨서(11/13) 손 실행 방식을 쓴다.
+  - 제출본 APK: GitHub Actions의 'APK 빌드'를 손으로 실행하며 `submit_tag`에 `v1.0`을 넣으면(또는 `v`로 시작하는 태그를 올리면) 그 커밋으로 빌드해 Releases에 "제출본 v1.0"으로 고정한다 ("개발 최신판"과 달리 덮어쓰지 않는다). README의 실행 방법이 이 릴리즈를 가리킨다. 클라우드 세션에서는 태그 push가 끊겨서(11/13) 손 실행 방식을 쓴다. 1차 제출본은 **v1.1**이다 (v1.0은 개인 정보 정리 전 판이라 쓰지 않는다).
   - 시연(송신)에는 등록 코드가 필요하다. README에는 "심사용 등록 코드는 접수 메일로 따로 보낸다"고 적었다. 코드는 저장소에 적지 않는다.
 
 ## 작업 위치
 
 - **클라우드 세션**: 코드 작성 → push → GitHub Actions가 APK 빌드 → 사용자가 집 PC 에뮬레이터에 설치해 시험하고 결과(캡처·오류)를 알려준다. 클라우드에서는 에뮬레이터를 돌릴 수 없고 안드로이드 SDK도 받을 수 없어서(dl.google.com 차단), 빌드 확인은 GitHub Actions 결과로 한다. Pleos 문서와 Maven 저장소(document.pleos.ai, pleos.ai, nexus-playground.pleos.ai)는 클라우드 환경 네트워크 설정에서 허용해 두었다 (2026-10-31).
-- **로컬 세션 (집 PC)**: 빌드·에뮬레이터 설치·로그 확인까지 바로 할 수 있다. 아래 환경 정보를 쓴다.
+- **로컬 세션 (집 PC)**: 빌드·에뮬레이터 설치·로그 확인까지 바로 할 수 있다. 아래 환경 정보와 `CLAUDE.local.md`를 쓴다.
+  - 집 PC에 `CLAUDE.local.md`가 없으면 먼저 만든다. 11/13 이전 커밋의 CLAUDE.md에서 개인 정보 부분(근무 시간, 집 PC 사양과 SDK·JDK 경로, 협업자 계정 이름, 시연용 노트북 사양)을 옮긴다. `.gitignore`에 들어 있어 GitHub에 올라가지 않는다.
 
 ## 개발 환경 (집 PC)
 
-- Windows 11, AMD Ryzen 7 5800X, RAM 32GB, RTX 5070. BIOS에서 SVM(가상화)을 켰고, Windows 하이퍼바이저 플랫폼도 켰다.
-- Android Studio Rabbit 2 (2026.2.2). SDK 위치: `C:\Users\bsy92\AppData\Local\Android\Sdk`
-- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 `C:\Users\bsy92\.jdks\temurin-17`에 받아 두었다 (2026-11-01). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 앱 버전은 항상 R번호로 보인다 (사용자 요청 11/01). GitHub 빌드는 끝에 `R번호` 태그를 남기고, 집 PC 빌드는 화면에 "R15 · PC 11/01 13:13"처럼 '가장 큰 R태그 + 1'(다음에 올릴 번호)로 나온다. 그래서 PC 빌드 전에 `git fetch --tags`를 먼저 한다. 설치는 `adb install -r -d`. 계산 시험은 `./gradlew testCarDebugUnitTest`.
+- Windows 11. 하드웨어 사양과 가상화 설정은 `CLAUDE.local.md`.
+- Android Studio Rabbit 2 (2026.2.2). SDK 위치는 `CLAUDE.local.md`.
+- 집 PC 빌드: Android Studio에 들어 있는 Java(jbr)는 25라서 Gradle 8.11.1이 못 쓴다. GitHub Actions와 같은 Java 17(Temurin)을 따로 받아 두었다 (2026-11-01, 경로는 `CLAUDE.local.md`). JAVA_HOME을 여기로, ANDROID_HOME을 SDK 위치로 정하고 `./gradlew assembleCarDebug`. 앱 버전은 항상 R번호로 보인다 (사용자 요청 11/01). GitHub 빌드는 끝에 `R번호` 태그를 남기고, 집 PC 빌드는 화면에 "R15 · PC 11/01 13:13"처럼 '가장 큰 R태그 + 1'(다음에 올릴 번호)로 나온다. 그래서 PC 빌드 전에 `git fetch --tags`를 먼저 한다. 설치는 `adb install -r -d`. 계산 시험은 `./gradlew testCarDebugUnitTest`.
 - Git Bash에서 `adb shell` 뒤에 `/sdcard/...` 같은 경로를 쓰면 윈도우 경로로 바뀌어 버린다. 명령 앞에 `MSYS_NO_PATHCONV=1`을 둔다.
 - 에뮬레이터: Pleos Connect v2.1.0 APIs (API 34, x86_64). AVD 이름은 `Pleos_Connect_v2.1.0`, 포트 5554. 권장 설정은 RAM 4GB, Cold boot.
 - Virtual Console: 에뮬레이터를 켠 뒤 `adb forward tcp:8088 tcp:8088`을 실행하고, 브라우저에서 http://127.0.0.1:8088/ 을 연다. 사용자가 바탕화면 바로가기로 만들어 뒀을 수 있다. 필요하면 Claude Code가 직접 실행한다.
-- 시연용 노트북은 LG 그램 15ZD980 (i5-8250U, RAM 8GB, 여유 공간 약 46GB)이다. 에뮬레이터를 직접 돌리기엔 버겁다. 대안은 크롬 원격 데스크톱으로 이 PC 화면을 띄우는 것이고, 시연 녹화 영상도 백업으로 준비한다.
+- 시연용 노트북(사양은 `CLAUDE.local.md`)은 에뮬레이터를 직접 돌리기엔 버겁다. 대안은 크롬 원격 데스크톱으로 이 PC 화면을 띄우는 것이고, 시연 녹화 영상도 백업으로 준비한다.
 
 ## 기술 스택과 SDK
 
